@@ -4,6 +4,13 @@ Changelog
 
 (unreleased)
 ------------
+- Remove rename project since not needed any more. [Ali]
+- Update to be used in python3.7 for kaggle notebook. [Ali]
+
+
+0.2.2 (2022-10-22)
+------------------
+- Release: version 0.2.2 🚀 [modaresimr]
 - Release: version 0.2.1 🚀 [modaresimr]
 
 
