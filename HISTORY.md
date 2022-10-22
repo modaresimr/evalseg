@@ -2,8 +2,9 @@ Changelog
 =========
 
 
-(unreleased)
-------------
+0.2.3 (2022-10-22)
+------------------
+- Release: version 0.2.3 🚀 [modaresimr]
 - Remove rename project since not needed any more. [Ali]
 - Update to be used in python3.7 for kaggle notebook. [Ali]
 
