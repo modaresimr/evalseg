@@ -7,13 +7,5 @@ class NibDataset(Dataset):
     def __init__(self, path):
         super().__init__(path)
 
-    def get_CT(self, id):
-        return read_nib(get_file(self.dataset_info[CT][f'{id}']))
-
-    def get_groundtruth(self, id):
-        return read_nib(get_file(self.dataset_info[GT][f'{id}']))
-
-    def get_prediction(self, id,method):
-        return read_nib(get_file(self.dataset_info[PREDS][method][f'{id}']))
-
-
+    def read_file(self, path):
+        return read_nib(super().read_file(path))

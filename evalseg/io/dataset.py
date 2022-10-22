@@ -1,7 +1,7 @@
 import json
 import os
 import zipfile
-
+from .. import common
 GT = "GroundTruth"
 CT = "CT"
 PREDS = "Predictions"
@@ -20,17 +20,56 @@ class Dataset:
 
         self.dataset_info = load_dataset_info(path)
 
+    def get(self, typ, case):
+        if case == self._cache_case and self._cache.get(typ, None) is not None:
+            return self._cache[typ]
+
+        if typ == CT:
+            path = self.dataset_info[CT][f"{case}"]
+        elif typ == GT:
+            path = self.dataset_info[GT][f"{case}"]
+        else:
+            path = self.dataset_info[PREDS][typ][f"{case}"]
+
+        return self.read_file(path)
+
+    def read_file(self, path):
+        return get_file(path)
+
     def get_CT(self, id):
-        return get_file(self.dataset_info[CT][f"{id}"])
+        return self.get(CT, id)
 
     def get_groundtruth(self, id):
-        return get_file(self.dataset_info[GT][f"{id}"])
+        return self.get(GT, id)
 
     def get_prediction(self, method, id):
-        return get_file(self.dataset_info[PREDS][method][f"{id}"])
+        return self.get(method, id)
 
     def get_prediction_methods(self):
         return list(self.dataset_info[PREDS].keys())
+
+    def load_all_of_case(self, case, load_ct=True, load_gt=True, load_preds=None):
+        methods = []
+        if load_ct:
+            methods.append(CT)
+        if load_gt:
+            methods.append(GT)
+        if load_preds is None:
+            load_preds = self.get_prediction_methods()
+
+        methods = [*methods, *load_preds]
+
+        methods = [(k, case) for k in methods]
+        self._cache = {k[0]: v for k, v in common.parallel_runner(self._load, methods)}
+        self._cache_case = case
+
+    def clear_case():
+        del _cache
+
+    def _load(self, inp):
+        typ = inp[0]
+        case = inp[1]
+        return self.get(typ, case)
 
     def get_available_ids(self):
         res = {}
