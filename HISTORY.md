@@ -4,6 +4,13 @@ Changelog
 
 (unreleased)
 ------------
+- Add general get method to dataset and add load all method to dataset.
+  [Ali]
+
+
+0.2.6 (2022-10-22)
+------------------
+- Release: version 0.2.6 🚀 [modaresimr]
 - Fix reading dataset metadata. [Ali]
 
 
