@@ -19,9 +19,18 @@ class Dataset:
         self.labels = {int(k): self.labels[k] for k in self.labels}
 
         self.dataset_info = load_dataset_info(path)
+        self._cache_case = None
+        self._cache = {}
+
+    def _is_valid_cache(self, typ, case):
+        if case != self._cache_case:
+            return False
+        if self._cache.get(typ, None) is None:
+            return False
+        return True
 
     def get(self, typ, case):
-        if case == self._cache_case and self._cache.get(typ, None) is not None:
+        if self._is_valid_cache(typ, case):
             return self._cache[typ]
 
         if typ == CT:
