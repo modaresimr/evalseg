@@ -32,7 +32,7 @@ def read_requirements(path):
 setup(
     name="evalseg",
     version=read("evalseg", "VERSION"),
-    description="Awesome evalseg created by modaresimr",
+    description="Medical Image Segmentation Evaluation",
     url="https://github.com/modaresimr/evalseg/",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",

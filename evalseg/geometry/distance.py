@@ -1,7 +1,7 @@
 import edt
 import numpy as np
 
-from . import one_roi
+from .roi import one_roi
 
 
 def distance(img, spacing=None, mode="in", mask=None, ignore_distance_rate=1):

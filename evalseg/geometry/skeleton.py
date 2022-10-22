@@ -3,7 +3,7 @@ import scipy
 import skimage
 
 from ..common import Cache
-from . import one_roi
+from .roi import one_roi
 
 
 # @Cache.memoize()
