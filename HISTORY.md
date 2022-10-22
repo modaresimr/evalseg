@@ -2,6 +2,11 @@ Changelog
 =========
 
 
+0.2.4 (2022-10-22)
+------------------
+- Release: version 0.2.4 🚀 [modaresimr]
+
+
 0.2.3 (2022-10-22)
 ------------------
 - Release: version 0.2.3 🚀 [modaresimr]
