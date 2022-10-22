@@ -1,3 +1,4 @@
+import json
 import os
 import zipfile
 
@@ -5,17 +6,15 @@ GT = "GroundTruth"
 CT = "CT"
 PREDS = "Predictions"
 
-import json
-
 
 class Dataset:
     def __init__(self, path):
         try:
-            self.labels = json.load(f"{path}/metadata.json")["labels"]
-        except:
-            print(
-                "metadata.json is not found --> consider binary labels: 0->background, 1->forground"
-            )
+            with open(f"{path}/metadata.json", 'r') as f:
+                self.labels = json.load(f)["labels"]
+        except Exception as e:
+            print(f"""error in metadata.json {e} -->
+                    consider binary labels: 0->background, 1->forground""")
             self.labels = {"0": "background", "1": "forground"}
         self.labels = {int(k): self.labels[k] for k in self.labels}
 
@@ -28,7 +27,7 @@ class Dataset:
         return get_file(self.dataset_info[GT][f"{id}"])
 
     def get_prediction(self, method, id):
-        return get_file(self.dataset_info[PREDS][method][f"{id}.nii"])
+        return get_file(self.dataset_info[PREDS][method][f"{id}"])
 
     def get_prediction_methods(self):
         return list(self.dataset_info[PREDS].keys())
@@ -51,23 +50,27 @@ class Dataset:
 def _load_zip_info(path):
     res = {}
     with zipfile.ZipFile(path, "r") as archive:
-        for zpath in archive.listfiles():
+        for zpath in archive.namelist():
             if zpath.startswith(".") or "/." in zpath or zpath.endswith("/"):
                 continue
-            h, t = os.path.split(zpath)[0]
+
+            h, t = os.path.split(zpath)
+
             current = res
-            for c in h.split("/"):
-                if not (c in current):
-                    current[c] = {}
-                current = current[c]
+            if h != '':
+                for c in h.split("/"):
+                    if not (c in current):
+                        current[c] = {}
+                    current = current[c]
             current[t] = f"{path}#{zpath}"
+
     return res
 
 
 def _load_dir_info(path):
     res = {}
     for file in os.listdir(path):
-        res[file] = load_dataset_info(f"{path}/{file}")
+        res[file.replace('.zip', '')] = load_dataset_info(f"{path}/{file}")
     return res
 
 
