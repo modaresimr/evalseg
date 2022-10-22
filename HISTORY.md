@@ -2,6 +2,11 @@ Changelog
 =========
 
 
+(unreleased)
+------------
+- Release: version 0.2.1 🚀 [modaresimr]
+
+
 0.1.1 (2022-10-22)
 ------------------
 - Update. [Ali]
