@@ -1,5 +1,16 @@
-# This template is a low-dependency template. 
-# By default there is no requirements added here.
-# Add the requirements you need to this file.
-# or run `make init` to create this file automatically based on the template.
-# You can also run `make switch-to-poetry` to use the poetry package manager.
+pandas>=0.23.3
+numpy>=1.14.5
+matplotlib>=2.2.0
+nibabel
+tqdm
+ipywidgets
+diskcache
+compress_pickle
+opencv-python
+scipy
+edt
+scikit-image
+connected-components-3d
+sparse
+k3d
+ipython

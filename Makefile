@@ -35,10 +35,10 @@ lint:             ## Run pep8, black, mypy linters.
 	$(ENV_PREFIX)flake8 evalseg/
 	$(ENV_PREFIX)black -l 79 --check evalseg/
 	$(ENV_PREFIX)black -l 79 --check tests/
-	$(ENV_PREFIX)mypy --ignore-missing-imports evalseg/
+	#$(ENV_PREFIX)mypy --ignore-missing-imports evalseg/
 
 .PHONY: test
-test: lint        ## Run tests and generate coverage report.
+test: # lint        ## Run tests and generate coverage report.
 	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=evalseg -l --tb=short --maxfail=1 tests/
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
@@ -51,6 +51,7 @@ watch:            ## Run tests on every change.
 clean:            ## Clean unused files.
 	@find ./ -name '*.pyc' -exec rm -f {} \;
 	@find ./ -name '__pycache__' -exec rm -rf {} \;
+	@find ./ -name '.ipynb_checkpoints' -exec rm -rf {} \;
 	@find ./ -name 'Thumbs.db' -exec rm -f {} \;
 	@find ./ -name '*~' -exec rm -f {} \;
 	@rm -rf .cache
@@ -62,6 +63,7 @@ clean:            ## Clean unused files.
 	@rm -rf htmlcov
 	@rm -rf .tox/
 	@rm -rf docs/_build
+	
 
 .PHONY: virtualenv
 virtualenv:       ## Create a virtual environment.
