@@ -1,6 +1,6 @@
 import copy
 from enum import Enum
-from typing import Literal
+from typing_extensions import Literal
 
 import cc3d
 import numpy as np

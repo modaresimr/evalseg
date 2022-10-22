@@ -2,7 +2,8 @@ import copy
 import hashlib
 from collections import defaultdict
 from enum import Enum
-from typing import Literal
+from typing_extensions import Literal
+
 
 import cc3d
 import edt

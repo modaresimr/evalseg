@@ -14,3 +14,4 @@ connected-components-3d
 sparse
 k3d
 ipython
+typing-extensions
