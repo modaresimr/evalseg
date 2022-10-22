@@ -4,6 +4,12 @@ Changelog
 
 (unreleased)
 ------------
+- Fix cache bug. [Ali]
+
+
+0.2.7 (2022-10-22)
+------------------
+- Release: version 0.2.7 🚀 [modaresimr]
 - Add general get method to dataset and add load all method to dataset.
   [Ali]
 
