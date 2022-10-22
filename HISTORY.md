@@ -2,6 +2,16 @@ Changelog
 =========
 
 
+(unreleased)
+------------
+- Fix reading dataset metadata. [Ali]
+
+
+0.2.5 (2022-10-22)
+------------------
+- Release: version 0.2.5 🚀 [modaresimr]
+
+
 0.2.4 (2022-10-22)
 ------------------
 - Release: version 0.2.4 🚀 [modaresimr]
