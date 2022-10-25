@@ -2,7 +2,9 @@
 # Medical Image Segmentation Evaluation
 
 
-This project is intended to evaluate Medical Segmentation approaches from multiple prespective
+This project is intended to evaluate Medical Segmentation approaches from multiple prespective.
+![graphic-abstract](https://user-images.githubusercontent.com/9498182/197723220-760ad148-e7a7-4bd6-bacb-805111141dcc.png)
+
 
 ### What is included on this repository?
 
