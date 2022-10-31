@@ -26,15 +26,17 @@ install:          ## Install the project in dev mode.
 
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
-	$(ENV_PREFIX)isort evalseg/
-	$(ENV_PREFIX)black -l 79 evalseg/
-	$(ENV_PREFIX)black -l 79 tests/
+	echo "skipping format code"
+	#$(ENV_PREFIX)isort evalseg/
+	# $(ENV_PREFIX)black -l 79 evalseg/
+	# $(ENV_PREFIX)black -l 79 tests/
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
-	$(ENV_PREFIX)flake8 evalseg/
-	$(ENV_PREFIX)black -l 79 --check evalseg/
-	$(ENV_PREFIX)black -l 79 --check tests/
+	echo "skipping lint"
+	#$(ENV_PREFIX)flake8 evalseg/
+	#$(ENV_PREFIX)black -l 79 --check evalseg/
+	#$(ENV_PREFIX)black -l 79 --check tests/
 	#$(ENV_PREFIX)mypy --ignore-missing-imports evalseg/
 
 .PHONY: test
