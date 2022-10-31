@@ -270,14 +270,23 @@ class MME(MetricABS):
             gt_labels = dc.helperc["gt_labels"]
             # dci.rel_gts = dc.rel['p+'][pi]['r+']['idx']
             # dci.rel_gt_comps, dci.rel_gts = _get_component_of(gt_labels, gt_labels[dci.component_p], dc.gN)
-
+            dci.component_pred = dc.rel["p+"][pi]['comp']
             fpd = int(len(dc.rel["p+"][pi]["r+"]["idx"]) == 0)
 
             resc["total"][D][FP] += fpd
-            if debug["D"]:
+            if debug[D]:
                 print(f" D FP+{f(fpd)}      pi={pi}, r={dc.rel['p+'][pi]['r+']['idx']}==0")
             add_info(info, D, "p+", pi, 0, 0, fpd)
             # DETECTION}
+            # TOTAL DURATION================================={
+            if fpd:
+                dci.volume_fp = (dci.component_pred).sum() * dc.helperc["voxel_volume"]
+                resc["total"][T][FP] += dci.volume_fp
+                if debug[T]:
+                    print(f" T FP+{f(dci.volume_fp)}      pi={pi}, no related gt")
+                add_info(info, T, "p+", pi, 0, 0, dci.volume_fp)
+            # TOTAL DURATION}
+            
             # resc['total'][U][FP] += len(dci.rel_gts) > 1
 
             # Uniformity FP=============================================={
