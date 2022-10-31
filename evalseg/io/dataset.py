@@ -17,6 +17,7 @@ class Dataset:
                     consider binary labels: 0->background, 1->forground""")
             self.labels = {"0": "background", "1": "forground"}
         self.labels = {int(k): self.labels[k] for k in self.labels}
+        self.num_labels = max(self.labels.keys())+1
 
         self.dataset_info = load_dataset_info(path)
         self._cache_case = None
@@ -29,7 +30,7 @@ class Dataset:
             return False
         return True
 
-    def get(self, typ, case):
+    def get(self, typ, case, compress=False):
         if self._is_valid_cache(typ, case):
             return self._cache[typ]
 
@@ -58,6 +59,7 @@ class Dataset:
         return list(self.dataset_info[PREDS].keys())
 
     def load_all_of_case(self, case, load_ct=True, load_gt=True, load_preds=None):
+        self.clear_case()
         methods = []
         if load_ct:
             methods.append(CT)
@@ -72,13 +74,14 @@ class Dataset:
         self._cache = {k[0]: v for k, v in common.parallel_runner(self._load, methods)}
         self._cache_case = case
 
-    def clear_case():
-        del _cache
+    def clear_case(self):
+        if getattr(self, '_cache'):
+            del self._cache
 
     def _load(self, inp):
         typ = inp[0]
         case = inp[1]
-        return self.get(typ, case)
+        return self.get(typ, case, compress=True)
 
     def get_available_ids(self):
         res = {}
