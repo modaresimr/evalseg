@@ -2,12 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm.auto import tqdm
 
-from .. import ct, geometry
+from .. import ct_helper, geometry
 
 epsilon = 0.0001
 
 
-def multi_plot_2d(img, pred, dst=None, spacing=None, args={}):
+def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
     spacing = np.array([1, 1, 1] if spacing is None else spacing)
     f = {}
     imglbl = args.get("imglabel", "img")
@@ -17,36 +17,36 @@ def multi_plot_2d(img, pred, dst=None, spacing=None, args={}):
         imglbl = "Zoom to ROI"
     gtlbl = "GroundTruth"
 
-    items = {imglbl: img, **pred}
+    items = {imglbl: ct, gtlbl: gt, **preds}
 
-    if args.get("clahe", 0):
-        items[imglbl] = ct.clahe(items[imglbl])
+    if args.get("clahe", 1):
+        items[imglbl] = ct_helper.clahe(items[imglbl])
 
-    if args.get("crop2roi", 0):
-        roi = ct.ct_roi(items[imglbl], True)
+    if args.get("crop2roi", 1):
+        roi = ct_helper.ct_roi(items[imglbl], True)
         items = {p: items[p][roi] for p in items}
 
-    if args.get("zoom2segments", 0):
+    if args.get("zoom2segments", 1):
         notzoom_img = items[imglbl]
 
         orig_ratio = notzoom_img.shape[1] / notzoom_img.shape[0]
-        zoom_roi = ct.segment_roi(
+        zoom_roi = ct_helper.segment_roi(
             [items[p] for p in items if p != imglbl],
             wh_ratio=orig_ratio,
             mindim=[20 / spacing[0], 20 / spacing[1], -1],
         )
         items = {p: items[p][zoom_roi] for p in items}
-        if args.get("add_notzoom_img", 0):
+        if args.get("add_notzoom_img", 1):
             # items={p:CTHelper.upscale_ct(items[p],notzoom_img.shape) for p in items}
             items = {origsize_lbl: notzoom_img, **items}
 
     #         if origsize_lbl in items:
     #             items[origsize_lbl]=CTHelper.claheCT(items[origsize_lbl])
 
-    img = items[imglbl]
+    ct = items[imglbl]
 
     gt = items[gtlbl]
-    normalimg = (img - img.min()) / (img.max() - img.min() + epsilon)
+    normalimg = (ct - ct.min()) / (ct.max() - ct.min() + epsilon)
 
     data = {}
     for p in tqdm(items, leave=False):
@@ -120,7 +120,7 @@ def multi_plot_2d(img, pred, dst=None, spacing=None, args={}):
                     ListedColormap,
                 )
 
-                if args.get("add_backimg", 0) and not ():
+                if args.get("add_backimg", 1):
                     axes[i].imshow(
                         normalimg[:, :, anim] / 2,
                         cmap=mri_cmap,

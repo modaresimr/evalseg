@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm.auto import tqdm
 
-from .. import ct, geometry
+from .. import ct_helper, geometry
 
 
 def ortho_slicer(img, pred, cut, spacing=None, args={}):
@@ -31,7 +31,7 @@ def ortho_slicer(img, pred, cut, spacing=None, args={}):
             # axes[pi][i].imshow(predcut, cmap='bone')
 
             if predcut.sum() > 0:
-                axes[pi][i].contour(predcut, cmap="bone")
+                axes[pi][i].contour(predcut)
 
             axes[pi][i].axhline(cut[dim_new[0]])
             axes[pi][i].axvline(cut[dim_new[1]])
