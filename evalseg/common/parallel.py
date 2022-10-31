@@ -5,8 +5,11 @@ import numpy as np
 from tqdm.auto import tqdm
 
 
-def _parallel_run_in_chunk(chunks, runner):
-    return [runner(c) for c in chunks]
+def _chunk_run(chunks, runner):
+
+    res = [runner(**c) if type(c) == dict else runner(c)
+           for c in chunks]
+    return res
 
 
 def parallel_runner(
@@ -35,11 +38,11 @@ def _parallel_runner(
     if parallel and max_cpu > 1:
 
         spls = np.array_split(range(len(items)), max_threads)
-        chunks = [items[spl[0] : spl[-1] + 1] for spl in spls if len(spl)]
+        chunks = [items[spl[0]: spl[-1] + 1] for spl in spls if len(spl)]
         pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)
 
         result = pool.imap(
-            partial(_parallel_run_in_chunk, runner=runner), chunks
+            partial(_chunk_run, runner=runner), chunks
         )
         try:
             for c in chunks:
