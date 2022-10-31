@@ -2,12 +2,14 @@ import numpy as np
 
 
 def slice(data, spacing, dim, cuts):
+    if dim == -1 or dim == None:
+        return data, spacing
 
-    if dim == 1:
+    if dim == 1 or dim == 'y':
         code = [2, 0, 1]
         # data = np.transpose(data, (2, 0, 1))
         # data=data[::-1,::-1,:]
-    elif dim == 0:
+    elif dim == 0 or dim == 'x':
         code = [2, 1, 0]
         # data = np.transpose(data, (2, 1, 0))
         # data=data[::-1,::-1,:]
