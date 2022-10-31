@@ -9,11 +9,9 @@ import cc3d
 import edt
 import numpy as np
 import skimage
-from scipy.ndimage import (
-    binary_erosion,
-    distance_transform_edt,
-    generate_binary_structure,
-)
+from scipy.ndimage import (binary_erosion,
+                           distance_transform_edt,
+                           generate_binary_structure,)
 from sparse import COO
 
 from .. import common, geometry
@@ -42,12 +40,7 @@ class MME(MetricABS):
         super().__init__(debug)
         pass
 
-    def calculate_info(
-        self,
-        reference: np.ndarray,
-        spacing: np.ndarray = None,
-        **kwargs,
-    ):
+    def calculate_info(self, reference: np.ndarray, spacing: np.ndarray = None, **kwargs,):
 
         # pylint: disable=Need type annotation
         refc = reference
@@ -58,40 +51,24 @@ class MME(MetricABS):
         helperc["gt_labels"] = gt_labels
         helperc["gN"] = gN
 
-        gt_regions = geometry.expand_labels(
-            gt_labels, spacing=spacing
-        ).astype(np.uint8)
+        gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
         helperc["gt_regions"] = gt_regions
         helperc["components"] = {}
         for i in range(1, gN + 1):
             gt_component = gt_labels == i
             gt_region = gt_regions == i
-            gt_border = geometry.find_binary_boundary(
-                gt_component, mode="thick"
-            )
+            gt_border = geometry.find_binary_boundary(gt_component, mode="thick")
             gt_no_border = gt_component & ~gt_border
             gt_with_border = gt_component | gt_border
-            in_dst = geometry.distance(
-                gt_no_border, spacing=spacing, mode="in"
-            )
-            out_dst = geometry.distance(
-                gt_with_border, spacing=spacing, mode="out"
-            )
+            in_dst = geometry.distance(gt_no_border, spacing=spacing, mode="in")
+            out_dst = geometry.distance(gt_with_border, spacing=spacing, mode="out")
             gt_dst = out_dst + in_dst
 
-            skeleton = (
-                geometry.skeletonize(gt_component, spacing=spacing) > 0
-            )
-            skeleton_dst = geometry.distance(
-                skeleton, spacing=spacing, mode="out"
-            )
+            skeleton = (geometry.skeletonize(gt_component, spacing=spacing) > 0)
+            skeleton_dst = geometry.distance(skeleton, spacing=spacing, mode="out")
 
-            normalize_dst_inside = in_dst / (
-                skeleton_dst + in_dst + epsilon
-            )
-            normalize_dst_outside = np.maximum(
-                0, out_dst - epsilon / (skeleton_dst - out_dst + epsilon)
-            )
+            normalize_dst_inside = in_dst / (skeleton_dst + in_dst + epsilon)
+            normalize_dst_outside = np.maximum(0, out_dst - epsilon / (skeleton_dst - out_dst + epsilon))
             # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
             normalize_dst = normalize_dst_inside + normalize_dst_outside
 
@@ -113,15 +90,11 @@ class MME(MetricABS):
 
         return helperc
 
-    def evaluate(
-        self, test: np.ndarray, return_debug: bool = False, **kwargs
-    ):
+    def evaluate(self, test: np.ndarray, return_debug: bool = False, **kwargs):
         calc_not_exist = False  # tmp
         reference = self.reference
         debug = self.debug
-        assert (
-            test.shape == reference.shape
-        ), "reference and test are not match"
+        assert (test.shape == reference.shape), "reference and test are not match"
 
         alpha1 = 0.1
         alpha2 = 1
@@ -136,28 +109,18 @@ class MME(MetricABS):
         resc = {"total": {}, "components": {}}
 
         dc.gt_labels, dc.gN = dc.helperc["gt_labels"], dc.helperc["gN"]
-        dc.pred_labels, dc.pN = cc3d.connected_components(
-            dc.testc, return_N=True
-        )
+        dc.pred_labels, dc.pN = cc3d.connected_components(dc.testc, return_N=True)
 
         # extend gt_regions for not included components in prediction {
         dc.gt_regions = dc.helperc["gt_regions"]
         dc.gt_regions_idx = _get_component_idx(dc.gt_regions[dc.testc])
-        dc.gt_region_mask = _get_merged_components(
-            dc.gt_regions, dc.gt_regions_idx
-        )
+        dc.gt_region_mask = _get_merged_components(dc.gt_regions, dc.gt_regions_idx)
         dc.rel_gt_regions = np.zeros_like(dc.gt_regions)
 
-        dc.rel_gt_regions[dc.gt_region_mask] = dc.gt_regions[
-            dc.gt_region_mask
-        ]
-        dc.gt_regions = geometry.expand_labels(
-            dc.rel_gt_regions, spacing=self.spacing
-        ).astype(np.uint8)
+        dc.rel_gt_regions[dc.gt_region_mask] = dc.gt_regions[dc.gt_region_mask]
+        dc.gt_regions = geometry.expand_labels(dc.rel_gt_regions, spacing=self.spacing).astype(np.uint8)
         # }
-        dc.rel = _get_rel_gt_pred(
-            dc.gt_labels, dc.gN, dc.pred_labels, dc.pN, dc.gt_regions
-        )
+        dc.rel = _get_rel_gt_pred(dc.gt_labels, dc.gN, dc.pred_labels, dc.pN, dc.gt_regions)
         # print('rel', dc.rel)
         resc["total"] = copy.deepcopy(m_def)
         dc.gts = {}
@@ -182,16 +145,12 @@ class MME(MetricABS):
                 m[U][TP] = dci.tpu
                 m[U][FN] = 1 - dci.tpu
                 if debug[U]:
-                    print(
-                        f"  U tp+{f(dci.tpu)}  fn+{f(1-dci.tpu)}           Z[r+][{ri}][p+]=={f(dci.tpuc)}"
-                    )
+                    print(f"  U tp+{f(dci.tpu)}  fn+{f(1-dci.tpu)}           Z[r+][{ri}][p+]=={f(dci.tpuc)}")
                 add_info(info, U, "r+", ri, dci.tpu, 1 - dci.tpu, 0)
             # Uniformity}
 
             # dci.pred_in_region = dci.component_pred & (dc.gt_regions == ri)
-            dci.pred_in_region = dc.rel["r+"][ri]["p+in_region"][
-                "merged_comp"
-            ]
+            dci.pred_in_region = dc.rel["r+"][ri]["p+in_region"]["merged_comp"]
             # # if a prediction contains two gt only consider the part related to gt
             # dc.gt_regions[dci.component_pred]
             # for l in dci.rel_gts:
@@ -200,38 +159,22 @@ class MME(MetricABS):
 
             # Total Volume================================={
             dci.volume_gt = dci.component_gt.sum() * dc.helperc["voxel_volume"]
-            dci.volume_pred = (
-                dci.component_pred.sum() * dc.helperc["voxel_volume"]
-            )
+            dci.volume_pred = (dci.component_pred.sum() * dc.helperc["voxel_volume"])
 
-            dci.volume_tp = (
-                dci.component_pred & dci.component_gt
-            ).sum() * dc.helperc["voxel_volume"]
+            dci.volume_tp = (dci.component_pred & dci.component_gt).sum() * dc.helperc["voxel_volume"]
             dci.volume_fn = dci.volume_gt - dci.volume_tp
             dci.volume_fp = dci.volume_pred - dci.volume_tp
             m[T][TP] += dci.volume_tp
             m[T][FN] += dci.volume_fn
             m[T][FP] += dci.volume_fp
             if debug[T]:
-                print(
-                    f"   T tp+{f(dci.volume_tp)} fn+{f(dci.volume_fn)} fp+{f(dci.volume_fp)}            rel[r+][{ri}] gt_vol={f(dci.volume_gt)} pred_vol={f(dci.volume_pred)}"
-                )
-            add_info(
-                info,
-                T,
-                "r+",
-                ri,
-                dci.volume_tp,
-                dci.volume_fn,
-                dci.volume_fp,
-            )
+                print(f" T tp+{f(dci.volume_tp)} fn+{f(dci.volume_fn)} fp+{f(dci.volume_fp)} rel[r+][{ri}] gtvol={f(dci.volume_gt)} pvol={f(dci.volume_pred)}")
+            add_info(info, T, "r+", ri, dci.volume_tp, dci.volume_fn, dci.volume_fp,)
             # Total Volume}
 
             # Relative Volume=============================={
             dci.volume_tp_rate = dci.volume_tp / dci.volume_gt
-            dci.volume_fn_rate = (
-                dci.volume_fn / dci.volume_gt if dci.volume_gt > 0 else 0
-            )
+            dci.volume_fn_rate = (dci.volume_fn / dci.volume_gt if dci.volume_gt > 0 else 0)
             dci.volume_fp_rate = min(1, dci.volume_fp / dci.volume_gt)
             if calc_not_exist or dci.volume_tp_rate > 0:
                 m[R][TP] += dci.volume_tp_rate
@@ -239,88 +182,46 @@ class MME(MetricABS):
                 m[R][FP] += min(1, dci.volume_fp_rate)
 
                 if debug[R]:
-                    print(
-                        f"    R tp+{f(dci.volume_tp_rate)} fn+{f(dci.volume_fn_rate)} fp+{f(dci.volume_fp_rate)}            rel[r+][{ri}])"
-                    )
+                    print(f"    R tp+{f(dci.volume_tp_rate)} fn+{f(dci.volume_fn_rate)} fp+{f(dci.volume_fp_rate)}            rel[r+][{ri}])")
 
-                add_info(
-                    info,
-                    R,
-                    "r+",
-                    ri,
-                    dci.volume_tp_rate,
-                    dci.volume_fn_rate,
-                    dci.volume_fp_rate,
-                )
+                add_info(info, R, "r+", ri, dci.volume_tp_rate, dci.volume_fn_rate, dci.volume_fp_rate,)
             # Relative Volume}
 
             # Boundary================================{
             dci.border_gt = hci["gt_border"]
             dci.gt_skel = hci["gt_skeleton"]
-            dci.border_pred_with_skel = geometry.find_binary_boundary(
-                dci.pred_in_region | dci.gt_skel, mode="inner"
-            )
+            dci.border_pred_with_skel = geometry.find_binary_boundary(dci.pred_in_region | dci.gt_skel, mode="inner")
 
             dci.skgtn_dst_in = hci["skgt_normalized_dst_in"]
             # dci.border_pred_with_skel_inside_gt = dci.border_pred_with_skel & dci.component_gt
             # dci.border_pred_with_skel_outside_gt = dci.border_pred_with_skel & (~dci.component_gt)
-            dci.skgtn_dst_pred_in = dci.skgtn_dst_in[
-                dci.border_pred_with_skel
-            ]
+            dci.skgtn_dst_pred_in = dci.skgtn_dst_in[dci.border_pred_with_skel]
             # dci.skgtn_dst_pred_in = dci.skgtn_dst_pred_in[dci.skgtn_dst_pred_in > 0]
             # print('skgtn_dst_pred_in', dci.skgtn_dst_pred_in)
             if return_debug:
                 dci.skgtn_dst_pred_in_v = np.zeros(dci.skgtn_dst_in.shape)
-                dci.skgtn_dst_pred_in_v[
-                    dci.border_pred_with_skel
-                ] = dci.skgtn_dst_in[dci.border_pred_with_skel]
+                dci.skgtn_dst_pred_in_v[dci.border_pred_with_skel] = dci.skgtn_dst_in[dci.border_pred_with_skel]
 
             dci.skgtn_dst_out = hci["skgt_normalized_dst_out"]
-            dci.skgtn_dst_pred_out = dci.skgtn_dst_out[
-                dci.border_pred_with_skel
-            ]
+            dci.skgtn_dst_pred_out = dci.skgtn_dst_out[dci.border_pred_with_skel]
 
             if return_debug:
-                dci.skgtn_dst_pred_out_v = np.zeros(
-                    dci.skgtn_dst_out.shape
-                )
-                dci.skgtn_dst_pred_out_v[
-                    dci.border_pred_with_skel
-                ] = dci.skgtn_dst_out[dci.border_pred_with_skel]
+                dci.skgtn_dst_pred_out_v = np.zeros(dci.skgtn_dst_out.shape)
+                dci.skgtn_dst_pred_out_v[dci.border_pred_with_skel] = dci.skgtn_dst_out[dci.border_pred_with_skel]
 
-            dci.skgtn_dst_pred = np.concatenate(
-                [dci.skgtn_dst_pred_out, dci.skgtn_dst_pred_in]
-            )
+            dci.skgtn_dst_pred = np.concatenate([dci.skgtn_dst_pred_out, dci.skgtn_dst_pred_in])
             dci.skgtn_dst_pred = dci.skgtn_dst_pred[dci.skgtn_dst_pred > 0]
 
-            dci.boundary_fp = (
-                min(1, dci.skgtn_dst_pred_out.mean())
-                if len(dci.skgtn_dst_pred_out) > 0
-                else 0
-            )
-            dci.boundary_fn = (
-                dci.skgtn_dst_pred_in.mean()
-                if len(dci.skgtn_dst_pred_in) > 0
-                else 0
-            )
+            dci.boundary_fp = (min(1, dci.skgtn_dst_pred_out.mean())if len(dci.skgtn_dst_pred_out) > 0 else 0)
+            dci.boundary_fn = (dci.skgtn_dst_pred_in.mean()if len(dci.skgtn_dst_pred_in) > 0 else 0)
             dci.boundary_tp = max(0, 1 - dci.boundary_fn)
             if calc_not_exist or dci.volume_tp_rate > 0:
                 m[B][TP] += dci.boundary_tp
                 m[B][FN] += dci.boundary_fn
                 m[B][FP] += dci.boundary_fp
                 if debug[B]:
-                    print(
-                        f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  "
-                    )
-                add_info(
-                    info,
-                    B,
-                    "r+",
-                    ri,
-                    dci.boundary_tp,
-                    dci.boundary_fn,
-                    dci.boundary_fp,
-                )
+                    print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
+                add_info(info, B, "r+", ri, dci.boundary_tp, dci.boundary_fn, dci.boundary_fp,)
             # Boundary}
 
             # Detection===================================={
@@ -331,9 +232,7 @@ class MME(MetricABS):
             m[D][FN] = fnd
             m[D][FP] = fpd
             if debug["D"]:
-                print(
-                    f" D TP+{f(tpd)}  FN+{f(fnd)} FP+{f(fpd)}     ri={ri}, p+={dc.rel['r+'][ri]['p+']['idx']}"
-                )
+                print(f" D TP+{f(tpd)}  FN+{f(fnd)} FP+{f(fpd)}     ri={ri}, p+={dc.rel['r+'][ri]['p+']['idx']}")
             add_info(info, D, "r+", ri, tpd, fnd, fpd)
             # Detection}
 
@@ -347,21 +246,10 @@ class MME(MetricABS):
             resc["components"][ri] = {
                 "MME": m,
                 # 'hdn': self.info(dci.pred_dst / dci.max_dst_gt),
-                "skgtn": dci.skgtn_dst_pred.mean()
-                if len(dci.skgtn_dst_pred)
-                else 0,
-                "skgtn_tp": 1
-                - (
-                    np.clip(dci.skgtn_dst_pred, 0, 1).mean()
-                    if len(dci.skgtn_dst_pred)
-                    else 0
-                ),
-                "skgtn_fn": dci.skgtn_dst_pred_in.mean()
-                if len(dci.skgtn_dst_pred_in)
-                else 0,
-                "skgtn_fp": dci.skgtn_dst_pred_out.mean()
-                if len(dci.skgtn_dst_pred_out)
-                else 0,
+                "skgtn": dci.skgtn_dst_pred.mean()if len(dci.skgtn_dst_pred)else 0,
+                "skgtn_tp": 1 - (np.clip(dci.skgtn_dst_pred, 0, 1).mean() if len(dci.skgtn_dst_pred) else 0),
+                "skgtn_fn": dci.skgtn_dst_pred_in.mean() if len(dci.skgtn_dst_pred_in) else 0,
+                "skgtn_fp": dci.skgtn_dst_pred_out.mean() if len(dci.skgtn_dst_pred_out) else 0,
             }
         resc["pN"] = dc.pN
         resc["gN"] = dc.gN
@@ -387,9 +275,7 @@ class MME(MetricABS):
 
             resc["total"][D][FP] += fpd
             if debug["D"]:
-                print(
-                    f" D FP+{f(fpd)}      pi={pi}, r={dc.rel['p+'][pi]['r+']['idx']}==0"
-                )
+                print(f" D FP+{f(fpd)}      pi={pi}, r={dc.rel['p+'][pi]['r+']['idx']}==0")
             add_info(info, D, "p+", pi, 0, 0, fpd)
             # DETECTION}
             # resc['total'][U][FP] += len(dci.rel_gts) > 1
@@ -400,9 +286,7 @@ class MME(MetricABS):
                 fpu = 1 - (1 / fpuc if fpuc > 0 else 0)
                 resc["total"][U][FP] += fpu
                 if debug[U]:
-                    print(
-                        f"  U fp+{f(fpu)}             Z[p+][{pi}][r+]=={f(fpuc)}"
-                    )
+                    print(f"  U fp+{f(fpu)}             Z[p+][{pi}][r+]=={f(fpuc)}")
                 add_info(info, U, "p+", pi, 0, 0, fpu)
 
             # Uniformity}
