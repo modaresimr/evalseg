@@ -1,6 +1,6 @@
-*.pkl 
+*.pkl
 .ipynb_checkpoints
-datasets/Task*
+datasets/Task0*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
