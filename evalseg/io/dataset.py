@@ -26,6 +26,8 @@ class Dataset:
     def _is_valid_cache(self, typ, case):
         if case != self._cache_case:
             return False
+        if not hasattr(self, '_cache'):
+            return False
         if self._cache.get(typ, None) is None:
             return False
         return True
