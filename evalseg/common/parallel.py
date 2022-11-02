@@ -41,9 +41,7 @@ def _parallel_runner(
         chunks = [items[spl[0]: spl[-1] + 1] for spl in spls if len(spl)]
         pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)
 
-        result = pool.imap(
-            partial(_chunk_run, runner=runner), chunks
-        )
+        result = pool.imap(partial(_chunk_run, runner=runner), chunks)
         try:
             for c in chunks:
                 for i, r in enumerate(result.next()):
@@ -55,5 +53,6 @@ def _parallel_runner(
             raise
     else:
         for item in items:
-            res = runner(item)
-            yield item, res
+            res = _chunk_run([item], runner)
+            yield item, res[0]
+            # yield item, res
