@@ -1,3 +1,4 @@
+from .. import geometry
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm.auto import tqdm
@@ -50,7 +51,7 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
 
     data = {}
     for p in tqdm(items, leave=False):
-        x = items[p]
+        x = items[p].astype(float)
         clipmin = x.min()
         clipmax = x.max()
 
@@ -87,7 +88,7 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
         for i, p in enumerate(data):
             current = {d: data[p][d][:, :, anim] for d in data[p]}
 
-            imgsize = 20
+            imgsize = 30
             if p in [imglbl, origsize_lbl]:
                 axes[i].imshow(
                     current["pred"],
@@ -206,3 +207,62 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
             fig.show()
         else:
             plt.close()
+
+
+epsilon = 0.00001
+
+
+def _get_common_region(dict_of_images):
+    data = np.array(list(dict_of_images.values()))
+    idx = geometry.one_roi(data, ignore=[0], threshold=10, return_index=True)
+    return idx[1:4]
+
+
+def multi_plot_img(dict_of_images, spacing=None, interactive=False):
+    spacing = np.array([1, 1, 1] if spacing is None else spacing)
+
+    dict_of_images = dict_of_images.copy()
+    f = {}
+    idx = _get_common_region(dict_of_images)
+    for k in dict_of_images:
+        x = dict_of_images[k][idx].copy()
+        f[k] = x.astype(np.float32)  # np.clip(x, 0, 5) / min(5, x.max() + epsilon)
+    if interactive:
+        import plotly.express as px
+
+        data = np.array(list(f.values()))
+        data = np.clip(data, data.min(), 40)
+        fig = px.imshow(data, animation_frame=3,
+                        facet_col=0, facet_col_wrap=5,
+                        origin='lower',
+                        zmin=0,
+                        aspect=spacing[0] / spacing[1],
+                        )
+        itemsmap = {f"{i}": key for i, key in enumerate(f)}
+        fig.for_each_annotation(
+            lambda a: a.update(text=itemsmap[a.text.split("=")[1]])
+        )
+        # fig.write_html('a.html')
+        fig.update_traces(coloraxis=None, selector=dict(type='heatmap'))
+        fig.show()
+        return fig
+    else:
+        import matplotlib.pyplot as plt
+
+        data = np.array(list(f.values()))
+        fig, axes = plt.subplots(
+            data.shape[3], data.shape[0], figsize=(14, 50)
+        )
+        if data.shape[3] == 1:
+            axes = [axes]
+        itemsmap = {i: key for i, key in enumerate(f)}
+        for i in range(data.shape[3]):
+            for j in range(data.shape[0]):
+                axes[i][j].imshow(
+                    data[j, :, :, i],
+                    vmin=0,
+                    vmax=1,
+                    aspect=spacing[0] / spacing[1],
+                )
+                axes[i][j].set_title(itemsmap[j])
+        fig.show()
