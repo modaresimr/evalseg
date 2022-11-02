@@ -2,19 +2,13 @@ import copy
 import hashlib
 from collections import defaultdict
 from enum import Enum
-from typing_extensions import Literal
-
 
 import cc3d
-import edt
 import numpy as np
-import skimage
-from scipy.ndimage import (binary_erosion,
-                           distance_transform_edt,
-                           generate_binary_structure,)
-from sparse import COO
 
-from .. import common, geometry
+from typing_extensions import Literal
+
+from .. import common, geometry, ui
 from ..common import Cache
 from . import MetricABS
 
@@ -68,6 +62,9 @@ class MME(MetricABS):
             skeleton_dst = geometry.distance(skeleton, spacing=spacing, mode="out")
 
             normalize_dst_inside = in_dst / (skeleton_dst + in_dst + epsilon)
+
+            skel_dst = skeleton_dst - out_dst + in_dst
+
             normalize_dst_outside = np.maximum(0, out_dst - epsilon / (skeleton_dst - out_dst + epsilon))
             # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
             normalize_dst = normalize_dst_inside + normalize_dst_outside
@@ -76,6 +73,7 @@ class MME(MetricABS):
                 "gt": gt_component,
                 "gt_region": gt_region,
                 "gt_border": gt_border,
+                "skel_dst": skel_dst,
                 "gt_dst": gt_dst,
                 "gt_out_dst": out_dst,
                 "gt_in_dst": in_dst,
@@ -90,13 +88,13 @@ class MME(MetricABS):
 
         return helperc
 
-    def evaluate(self, test: np.ndarray, return_debug: bool = False, **kwargs):
+    def evaluate(self, test: np.ndarray, return_debug: bool = False, debug_prefix='', **kwargs):
         calc_not_exist = False  # tmp
         reference = self.reference
         debug = self.debug
         assert (test.shape == reference.shape), "reference and test are not match"
 
-        alpha1 = 0.1
+        alpha1 = 0.001
         alpha2 = 1
         m_def = {d: {TP: 0, FP: 0, FN: 0, TN: 0} for d in [D, B, U, R, T]}
 
@@ -134,7 +132,29 @@ class MME(MetricABS):
 
             # dci.component_pred, dci.pred_comp_idx = _get_component_of(dc.pred_labels, dc.pred_labels[dci.component_gt], dc.pN)
             dci.component_pred = dc.rel["r+"][ri]["p+"]["merged_comp"]
+            dci.pred_in_region = dc.rel["r+"][ri]["p+in_region"]["merged_comp"]
 
+            if debug['UI']:
+                if test.ndim == 2 or test.shape[2] == 1:
+                    ui_regions = dc.gt_regions.copy()
+                    ndst = hci["skgt_normalized_dst"].copy()
+                    ndst[ndst > 2] = 0
+                    ndst[hci["gt_border"]] = 1
+                    odst = hci["skel_dst"].copy()
+                    odst[odst > 3] = 0
+                    print('min,max', hci["skgt_normalized_dst"].min(), hci["skgt_normalized_dst"].max())
+                    ui_regions[ndst == 0] = 0
+                    ui.multi_plot_2d(
+                        odst,
+                        dci.component_gt,
+                        {
+                            'all_pred': dci.component_pred,
+                            "region": ui_regions,
+                            "pred_in_region": dci.pred_in_region,
+                            **{f'p{i}': dc.rel['p+'][i]['comp']
+                               for i in dc.rel["r+"][ri]["p+"]['idx']
+                               }
+                        }, args={'z_titles': [f'{debug_prefix} ri={ri}']})
             # dci.rel_p_gt_comps, dci.rel_p_gt_idx = _get_component_of(dc.gt_labels, dc.gt_labels[dci.component_pred], dc.gN)
 
             # Uniformity (TP and FN)....{
@@ -150,7 +170,7 @@ class MME(MetricABS):
             # Uniformity}
 
             # dci.pred_in_region = dci.component_pred & (dc.gt_regions == ri)
-            dci.pred_in_region = dc.rel["r+"][ri]["p+in_region"]["merged_comp"]
+
             # # if a prediction contains two gt only consider the part related to gt
             # dc.gt_regions[dci.component_pred]
             # for l in dci.rel_gts:
@@ -220,7 +240,15 @@ class MME(MetricABS):
                 m[B][FN] += dci.boundary_fn
                 m[B][FP] += dci.boundary_fp
                 if debug[B]:
+                    print(f"     B volume_tp_rate={dci.volume_tp_rate}")
                     print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
+                    if test.ndim == 2 or test.shape[2] == 1:
+                        ui.multi_plot_2d(np.clip(hci["skgt_normalized_dst"], 0, 2), dci.component_gt, {
+                            'all_pred': dci.component_pred,
+                            "pred_in_region": dci.pred_in_region,
+                            "b_pred_skel": dci.border_pred_with_skel,
+                            **{f'p+{i}': dc.rel['p+'][i]['comp'] for i in dc.rel["r+"][ri]["p+"]['idx']}
+                        }, args={'z_titles': [f'B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}']})
                 add_info(info, B, "r+", ri, dci.boundary_tp, dci.boundary_fn, dci.boundary_fp,)
             # Boundary}
 
@@ -286,7 +314,7 @@ class MME(MetricABS):
                     print(f" T FP+{f(dci.volume_fp)}      pi={pi}, no related gt")
                 add_info(info, T, "p+", pi, 0, 0, dci.volume_fp)
             # TOTAL DURATION}
-            
+
             # resc['total'][U][FP] += len(dci.rel_gts) > 1
 
             # Uniformity FP=============================================={
