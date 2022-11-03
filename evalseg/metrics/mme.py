@@ -23,6 +23,7 @@ U = "U"
 R = "R"
 T = "T"
 B = "B"
+UI = "UI"
 
 # pylint: disable-all
 # pylint: disable=all
@@ -65,10 +66,17 @@ class MME(MetricABS):
 
             skel_dst = skeleton_dst - out_dst + in_dst
 
-            normalize_dst_outside = np.maximum(0, out_dst - epsilon / (skeleton_dst - out_dst + epsilon))
+            normalize_dst_outside = np.maximum(0, (out_dst - epsilon) / (skeleton_dst - out_dst + epsilon))
             # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
             normalize_dst = normalize_dst_inside + normalize_dst_outside
-
+            # idx = (119, 325)
+            # tmp = {'skeleton_dst': skeleton_dst,
+            #        'in_dst': in_dst, 'out_dst': out_dst, 'skel_dst': skel_dst,
+            #        'normalize_dst_inside': normalize_dst_inside,
+            #        'normalize_dst_outside': normalize_dst_outside,
+            #        'normalize_dst': normalize_dst,
+            #        }
+            # print({k: tmp[k][idx] for k in tmp})
             helperc["components"][i] = {
                 "gt": gt_component,
                 "gt_region": gt_region,
@@ -93,7 +101,7 @@ class MME(MetricABS):
         reference = self.reference
         debug = self.debug
         assert (test.shape == reference.shape), "reference and test are not match"
-
+        is2d = (test.ndim == 2 or test.shape[2] == 1)
         alpha1 = 0.001
         alpha2 = 1
         m_def = {d: {TP: 0, FP: 0, FN: 0, TN: 0} for d in [D, B, U, R, T]}
@@ -134,31 +142,32 @@ class MME(MetricABS):
             dci.component_pred = dc.rel["r+"][ri]["p+"]["merged_comp"]
             dci.pred_in_region = dc.rel["r+"][ri]["p+in_region"]["merged_comp"]
 
-            if debug['UI']:
-                if test.ndim == 2 or test.shape[2] == 1:
-                    ui_regions = dc.gt_regions.copy()
-                    ndst = hci["skgt_normalized_dst"].copy()
-                    ndst[ndst > 2] = 0
-                    ndst[hci["gt_border"]] = 1
-                    odst = hci["skel_dst"].copy()
-                    odst[odst > 3] = 0
-                    print('min,max', hci["skgt_normalized_dst"].min(), hci["skgt_normalized_dst"].max())
-                    ui_regions[ndst == 0] = 0
-                    ui.multi_plot_2d(
-                        odst,
-                        dci.component_gt,
-                        {
-                            'all_pred': dci.component_pred,
-                            "region": ui_regions,
-                            "pred_in_region": dci.pred_in_region,
-                            **{f'p{i}': dc.rel['p+'][i]['comp']
-                               for i in dc.rel["r+"][ri]["p+"]['idx']
-                               }
-                        }, args={'z_titles': [f'{debug_prefix} ri={ri}']})
+            if debug[UI] and is2d:
+                ui_regions = dc.gt_regions.copy()
+                ndst = hci["skgt_normalized_dst"].copy()
+                ndst[ndst > 2] = 2
+                ndst[hci["gt_border"]] = 1
+
+                ui_regions[ndst == 0] = 0
+                ui.multi_plot_2d(
+                    ndst,
+                    dci.component_gt,
+                    {
+                        # 'all_pred': dci.component_pred,
+                        # "region": ui_regions,
+                        "pred_in_region": dci.pred_in_region,
+                        **{f'p{i}': dc.rel['p+'][i]['comp']
+                           for i in dc.rel["r+"][ri]["p+"]['idx']
+                           }
+                    }, args={
+                        'z_titles': [f'{debug_prefix} ri={ri}'],
+                        'add_notzoom_img': 0
+                    })
             # dci.rel_p_gt_comps, dci.rel_p_gt_idx = _get_component_of(dc.gt_labels, dc.gt_labels[dci.component_pred], dc.gN)
 
             # Uniformity (TP and FN)....{
-            dci.tpuc = _Z(dc.rel, "r+", ri, "p+")
+            # dci.tpuc = _Z(dc.rel, "r+", ri, "p+")
+            dci.tpuc = len(dc.rel["r+"][ri]["p+"]['idx'])
             dci.tpu = 1 / dci.tpuc if dci.tpuc > 0 else 0
 
             if calc_not_exist or dci.tpuc > 0:
@@ -166,6 +175,13 @@ class MME(MetricABS):
                 m[U][FN] = 1 - dci.tpu
                 if debug[U]:
                     print(f"  U tp+{f(dci.tpu)}  fn+{f(1-dci.tpu)}           Z[r+][{ri}][p+]=={f(dci.tpuc)}")
+                    if debug[UI] and is2d:
+                        if len(dc.rel["r+"][ri]["p+"]['idx']):
+                            ui.multi_plot_img({
+                                f'p{i}': dc.rel['p+'][i]['comp']
+                                for i in dc.rel["r+"][ri]["p+"]['idx']
+                            }, title=f"_Z={dci.tpuc} tpu={dci.tpu} ri={ri} pi={dc.rel['r+'][ri]['p+']['idx']}")
+
                 add_info(info, U, "r+", ri, dci.tpu, 1 - dci.tpu, 0)
             # Uniformity}
 
@@ -240,15 +256,14 @@ class MME(MetricABS):
                 m[B][FN] += dci.boundary_fn
                 m[B][FP] += dci.boundary_fp
                 if debug[B]:
-                    print(f"     B volume_tp_rate={dci.volume_tp_rate}")
+                    # print(f"     B volume_tp_rate={dci.volume_tp_rate}")
                     print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
-                    if test.ndim == 2 or test.shape[2] == 1:
-                        ui.multi_plot_2d(np.clip(hci["skgt_normalized_dst"], 0, 2), dci.component_gt, {
-                            'all_pred': dci.component_pred,
-                            "pred_in_region": dci.pred_in_region,
-                            "b_pred_skel": dci.border_pred_with_skel,
+                    if debug['UI'] and (test.ndim == 2 or test.shape[2] == 1):
+                        ui.multi_plot_img({
+                            "gtskel": dci.gt_skel,
+                            "pborder+minskel": dci.border_pred_with_skel,
                             **{f'p+{i}': dc.rel['p+'][i]['comp'] for i in dc.rel["r+"][ri]["p+"]['idx']}
-                        }, args={'z_titles': [f'B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}']})
+                        }, title=f'B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}')
                 add_info(info, B, "r+", ri, dci.boundary_tp, dci.boundary_fn, dci.boundary_fp,)
             # Boundary}
 
@@ -318,7 +333,8 @@ class MME(MetricABS):
             # resc['total'][U][FP] += len(dci.rel_gts) > 1
 
             # Uniformity FP=============================================={
-            fpuc = _Z(dc.rel, "p+", pi, "r+")
+            # fpuc = _Z(dc.rel, "p+", pi, "r+")
+            fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
             if calc_not_exist or fpuc > 0:
                 fpu = 1 - (1 / fpuc if fpuc > 0 else 0)
                 resc["total"][U][FP] += fpu

@@ -51,7 +51,7 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
 
     data = {}
     for p in tqdm(items, leave=False):
-        x = items[p].astype(float)
+        x = items[p]*1
         clipmin = x.min()
         clipmax = x.max()
 
@@ -81,14 +81,13 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
 
         # fig, ax1 = plt.subplots(1, 1, figsize=(row, col),dpi=100)
         # ,gridspec_kw={'left':0, 'right':0, 'top':0, 'bottom':0}
-        fig, axes = plt.subplots(row, col, figsize=(col * 2, row * 2), dpi=100)
+        fig, axes = plt.subplots(row, col, constrained_layout=True, figsize=(col * 2, row * 2), dpi=100)
         aspect = spacing[0] / spacing[1]
         fig.suptitle(f"frame: {z_titles[anim]}")
         axes = axes.reshape(-1)
         for i, p in enumerate(data):
             current = {d: data[p][d][:, :, anim] for d in data[p]}
 
-            imgsize = 30
             if p in [imglbl, origsize_lbl]:
                 axes[i].imshow(
                     current["pred"],
@@ -204,7 +203,7 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
         if dst:
             fig.savefig(f"{dst}{anim}.png")
         if args.get("show", 1):
-            fig.show()
+            plt.show()
         else:
             plt.close()
 
@@ -218,7 +217,7 @@ def _get_common_region(dict_of_images):
     return idx[1:4]
 
 
-def multi_plot_img(dict_of_images, spacing=None, interactive=False):
+def multi_plot_img(dict_of_images, spacing=None, interactive=False, title=""):
     spacing = np.array([1, 1, 1] if spacing is None else spacing)
 
     dict_of_images = dict_of_images.copy()
@@ -226,7 +225,7 @@ def multi_plot_img(dict_of_images, spacing=None, interactive=False):
     idx = _get_common_region(dict_of_images)
     for k in dict_of_images:
         x = dict_of_images[k][idx].copy()
-        f[k] = x.astype(np.float32)  # np.clip(x, 0, 5) / min(5, x.max() + epsilon)
+        f[k] = x * 1  # np.clip(x, 0, 5) / min(5, x.max() + epsilon)
     if interactive:
         import plotly.express as px
 
@@ -237,6 +236,7 @@ def multi_plot_img(dict_of_images, spacing=None, interactive=False):
                         origin='lower',
                         zmin=0,
                         aspect=spacing[0] / spacing[1],
+                        title=title
                         )
         itemsmap = {f"{i}": key for i, key in enumerate(f)}
         fig.for_each_annotation(
@@ -250,9 +250,13 @@ def multi_plot_img(dict_of_images, spacing=None, interactive=False):
         import matplotlib.pyplot as plt
 
         data = np.array(list(f.values()))
+        row, col = data.shape[3], data.shape[0]
         fig, axes = plt.subplots(
-            data.shape[3], data.shape[0], figsize=(14, 50)
+            row, col, constrained_layout=True, figsize=(col * 2, row * 2), dpi=100
         )
+
+        if row == 1 and col == 1:
+            axes = [axes]
         if data.shape[3] == 1:
             axes = [axes]
         itemsmap = {i: key for i, key in enumerate(f)}
@@ -262,7 +266,9 @@ def multi_plot_img(dict_of_images, spacing=None, interactive=False):
                     data[j, :, :, i],
                     vmin=0,
                     vmax=1,
+                    origin='lower',
                     aspect=spacing[0] / spacing[1],
                 )
                 axes[i][j].set_title(itemsmap[j])
-        fig.show()
+        fig.suptitle(title)
+        plt.show()
