@@ -77,7 +77,7 @@ class Dataset:
         self._cache_case = case
 
     def clear_case(self):
-        if getattr(self, '_cache'):
+        if hasattr(self, '_cache'):
             del self._cache
 
     def _load(self, inp):
