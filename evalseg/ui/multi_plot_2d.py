@@ -1,33 +1,43 @@
-from .. import geometry
+from .. import geometry, ui
 import matplotlib.pyplot as plt
+from matplotlib.colors import (LinearSegmentedColormap, ListedColormap,)
+from matplotlib.patches import Rectangle
 import numpy as np
 from tqdm.auto import tqdm
-
+import os
 from .. import ct_helper, geometry
 
 epsilon = 0.0001
 
 
-def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
+def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_orig_size_ct=True,
+                  clahe=True, crop2roi=True, zoom2segments=True, add_backimg=True, show_tp_fp_fn=True,
+                  col=5, show=True, show_zoomed_ct=True, z_titles=[]):
+
     spacing = np.array([1, 1, 1] if spacing is None else spacing)
     f = {}
-    imglbl = args.get("imglabel", "img")
     origsize_lbl = "orig_size"
-    if args.get("add_notzoom_img", 0):
+    if show_orig_size_ct:
         origsize_lbl = imglbl
         imglbl = "Zoom to ROI"
     gtlbl = "GroundTruth"
+    if ct is None:
+        show_orig_size_ct = 0
+        show_zoomed_ct = 0
+        clahe = 0
+        crop2roi = 0
+        ct = gt.copy()
 
-    items = {imglbl: ct, gtlbl: gt, **preds}
+    items = {imglbl: ct*1, gtlbl: gt*1, **preds}
 
-    if args.get("clahe", 1):
+    if clahe:
         items[imglbl] = ct_helper.clahe(items[imglbl])
 
-    if args.get("crop2roi", 1):
+    if crop2roi:
         roi = ct_helper.ct_roi(items[imglbl], True)
         items = {p: items[p][roi] for p in items}
 
-    if args.get("zoom2segments", 1):
+    if zoom2segments:
         notzoom_img = items[imglbl]
 
         orig_ratio = notzoom_img.shape[1] / notzoom_img.shape[0]
@@ -37,7 +47,7 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
             mindim=[20 / spacing[0], 20 / spacing[1], -1],
         )
         items = {p: items[p][zoom_roi] for p in items}
-        if args.get("add_notzoom_img", 1):
+        if show_orig_size_ct:
             # items={p:CTHelper.upscale_ct(items[p],notzoom_img.shape) for p in items}
             items = {origsize_lbl: notzoom_img, **items}
 
@@ -72,122 +82,62 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
 
     mri_cmap = "bone"  # plotui.customMRIColorMapForMPL_TPFPFN()
 
-    col = min(len(items), 5)
+    col = min(len(items), col)
     row = (len(items) - 1) // col + 1
     zs = items[imglbl].shape[2]
 
-    z_titles = args.get("z_titles", [i for i in range(zs)])
+    z_titles = z_titles + [i for i in range(len(z_titles), zs)]
     for anim in range(zs):
 
         # fig, ax1 = plt.subplots(1, 1, figsize=(row, col),dpi=100)
         # ,gridspec_kw={'left':0, 'right':0, 'top':0, 'bottom':0}
-        fig, axes = plt.subplots(row, col, constrained_layout=True, figsize=(col * 2, row * 2), dpi=100)
+        fig, axes = ui.myplt.subplots(row, col, subplot_size=(2.5, 2.5), dpi=200)
+
         aspect = spacing[0] / spacing[1]
         fig.suptitle(f"frame: {z_titles[anim]}")
         axes = axes.reshape(-1)
         for i, p in enumerate(data):
             current = {d: data[p][d][:, :, anim] for d in data[p]}
 
-            if p in [imglbl, origsize_lbl]:
-                axes[i].imshow(
-                    current["pred"],
-                    cmap=mri_cmap,
-                    vmin=0,
-                    vmax=1,
-                    alpha=1,
-                    interpolation="nearest",
-                    aspect=aspect,
-                )
-                if p == origsize_lbl:
-                    from matplotlib.patches import Rectangle
+            if p == imglbl:
+                if show_zoomed_ct:
+                    axes[i].imshow(current["pred"], cmap=mri_cmap, vmin=0, vmax=1,
+                                   alpha=1, interpolation="nearest", aspect=aspect,)
+            elif p == origsize_lbl:
+                if show_orig_size_ct:
+                    axes[i].imshow(current["pred"], cmap=mri_cmap, vmin=0, vmax=1,
+                                   alpha=1, interpolation="nearest", aspect=aspect,)
 
                     y, x = zoom_roi[0].start, zoom_roi[1].start
                     h, w = zoom_roi[0].stop - y, zoom_roi[1].stop - x
 
-                    axes[i].add_patch(
-                        Rectangle(
-                            (x, y),
-                            w,
-                            h,
-                            facecolor="none",
-                            edgecolor="blue",
-                            lw=2,
-                        )
-                    )
+                    axes[i].add_patch(Rectangle((x, y), w, h, facecolor="none", edgecolor="blue", lw=2,))
             else:
-                from matplotlib.colors import (
-                    LinearSegmentedColormap,
-                    ListedColormap,
-                )
 
-                if args.get("add_backimg", 1):
-                    axes[i].imshow(
-                        normalimg[:, :, anim] / 2,
-                        cmap=mri_cmap,
-                        vmin=0,
-                        vmax=1,
-                        alpha=1,
-                        interpolation="nearest",
-                        aspect=aspect,
-                    )
+                if add_backimg:
+                    axes[i].imshow(normalimg[:, :, anim] / 2, cmap=mri_cmap, vmin=0, vmax=1,
+                                   alpha=1, interpolation="nearest", aspect=aspect,)
                 if p != gtlbl:
-                    if args.get("show_tp_fp_fn", 1):
+                    if show_tp_fp_fn:
                         if "tp" in current and current["tp"].sum() > 0:
                             # axes[i].contour(current['tp'],corner_mask=False,cmap=ListedColormap([(0,0,0,0),'lime']),vmin=0, vmax=1, alpha=1 )
                             cmap = ListedColormap([(0, 0, 0, 0), "lime"])
-                            axes[i].imshow(
-                                current["tp"],
-                                cmap=cmap,
-                                vmin=0,
-                                vmax=1,
-                                alpha=1,
-                                aspect=aspect,
-                            )
+                            axes[i].imshow(current["tp"], cmap=cmap, vmin=0, vmax=1,
+                                           alpha=1, aspect=aspect)
                         if "fp" in current and current["fp"].sum() > 0:
                             cmap = ListedColormap([(0, 0, 0, 0), "yellow"])
-                            axes[i].imshow(
-                                current["fp"],
-                                cmap=cmap,
-                                vmin=0,
-                                vmax=1,
-                                alpha=1,
-                                aspect=aspect,
-                            )
-                            axes[i].contour(
-                                current["fp"],
-                                corner_mask=False,
-                                cmap=cmap,
-                                vmin=0,
-                                vmax=1,
-                                alpha=1,
-                            )
+                            axes[i].imshow(current["fp"], cmap=cmap, vmin=0, vmax=1,
+                                           alpha=1, aspect=aspect)
+                            axes[i].contour(current["fp"], corner_mask=False, cmap=cmap, vmin=0, vmax=1, alpha=1,)
                         if "fn" in current and current["fn"].sum() > 0:
                             cmap = ListedColormap([(0, 0, 0, 0), "red"])
-                            axes[i].imshow(
-                                current["fn"],
-                                cmap=cmap,
-                                vmin=0,
-                                vmax=1,
-                                alpha=1,
-                                aspect=aspect,
-                            )
-                            axes[i].contour(
-                                current["fn"],
-                                corner_mask=False,
-                                cmap=cmap,
-                                vmin=0,
-                                vmax=1,
-                            )
+                            axes[i].imshow(current["fn"], cmap=cmap, vmin=0, vmax=1,
+                                           alpha=1, aspect=aspect)
+                            axes[i].contour(current["fn"], corner_mask=False, cmap=cmap, vmin=0, vmax=1,)
                     else:
                         cmap = ListedColormap([(0, 0, 0, 0), "lime"])
-                        axes[i].imshow(
-                            data[gtlbl]["pred"],
-                            cmap=cmap,
-                            vmin=0,
-                            vmax=1,
-                            alpha=0.5,
-                            aspect=aspect,
-                        )
+                        axes[i].imshow(data[gtlbl]["pred"], cmap=cmap, vmin=0, vmax=1,
+                                       alpha=0.5, aspect=aspect)
 
                 if current["pred"].sum() > 0:
                     color = "lime" if p == gtlbl else "yellow"
@@ -201,8 +151,12 @@ def multi_plot_2d(ct, gt, preds, dst=None, spacing=None, args={}):
             fig.delaxes(axes[j])
 
         if dst:
-            fig.savefig(f"{dst}{anim}.png")
-        if args.get("show", 1):
+            if zs > 1:
+                root_ext = os.path.splitext(dst)
+                fig.savefig(f"{root_ext[0]}-{anim}{root_ext[1]}")
+            else:
+                fig.savefig(dst)
+        if show:
             plt.show()
         else:
             plt.close()
@@ -217,7 +171,7 @@ def _get_common_region(dict_of_images):
     return idx[1:4]
 
 
-def multi_plot_img(dict_of_images, spacing=None, interactive=False, title=""):
+def multi_plot_img(dict_of_images, spacing=None, *, interactive=False, title="", col=5):
     spacing = np.array([1, 1, 1] if spacing is None else spacing)
 
     dict_of_images = dict_of_images.copy()
@@ -232,9 +186,8 @@ def multi_plot_img(dict_of_images, spacing=None, interactive=False, title=""):
         data = np.array(list(f.values()))
         data = np.clip(data, data.min(), 40)
         fig = px.imshow(data, animation_frame=3,
-                        facet_col=0, facet_col_wrap=5,
-                        origin='lower',
-                        zmin=0,
+                        facet_col=0, facet_col_wrap=col,
+                        origin='lower', zmin=0,
                         aspect=spacing[0] / spacing[1],
                         title=title
                         )
@@ -243,32 +196,24 @@ def multi_plot_img(dict_of_images, spacing=None, interactive=False, title=""):
             lambda a: a.update(text=itemsmap[a.text.split("=")[1]])
         )
         # fig.write_html('a.html')
+
         fig.update_traces(coloraxis=None, selector=dict(type='heatmap'))
         fig.show()
         return fig
     else:
-        import matplotlib.pyplot as plt
 
         data = np.array(list(f.values()))
-        row, col = data.shape[3], data.shape[0]
-        fig, axes = plt.subplots(
-            row, col, constrained_layout=True, figsize=(col * 2, row * 2), dpi=100
-        )
 
-        if row == 1 and col == 1:
-            axes = [axes]
-        if data.shape[3] == 1:
-            axes = [axes]
         itemsmap = {i: key for i, key in enumerate(f)}
         for i in range(data.shape[3]):
+            row2, col2 = (data.shape[0]-1)//col+1, min(col, data.shape[0])
+            fig, axes = ui.myplt.subplots(row2, col2, subplot_size=(2.5, 2.5), dpi=200)
+            fig.suptitle(title+f' {i}')
+            axes = axes.reshape(-1)
             for j in range(data.shape[0]):
-                axes[i][j].imshow(
-                    data[j, :, :, i],
-                    vmin=0,
-                    vmax=1,
-                    origin='lower',
-                    aspect=spacing[0] / spacing[1],
-                )
-                axes[i][j].set_title(itemsmap[j])
-        fig.suptitle(title)
-        plt.show()
+                axes[j].imshow(data[j, :, :, i], vmin=0, vmax=1,
+                               origin='lower', aspect=spacing[0] / spacing[1],)
+                axes[j].set_title(itemsmap[j])
+            for jj in range(j+1, len(axes)):
+                fig.delaxes(axes[jj])
+            plt.show()
