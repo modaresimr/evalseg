@@ -10,17 +10,16 @@ from .. import ct_helper, geometry
 epsilon = 0.0001
 
 
-def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_orig_size_ct=True,
+def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, ctlbl='CT', show_orig_size_ct=True,
                   clahe=True, crop2roi=True, zoom2segments=True, add_backimg=True, show_tp_fp_fn=True,
-                  col=5, show=True, show_zoomed_ct=True, z_titles=[]):
+                  col=5, show=True, show_zoomed_ct=True, z_titles=[], gtlbl="GroundTruth"):
 
     spacing = np.array([1, 1, 1] if spacing is None else spacing)
     f = {}
     origsize_lbl = "orig_size"
     if show_orig_size_ct:
-        origsize_lbl = imglbl
-        imglbl = "Zoom to ROI"
-    gtlbl = "GroundTruth"
+        origsize_lbl = ctlbl
+        ctlbl = "Zoom to ROI"
     if ct is None:
         show_orig_size_ct = 0
         show_zoomed_ct = 0
@@ -28,21 +27,21 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_or
         crop2roi = 0
         ct = gt.copy()
 
-    items = {imglbl: ct*1, gtlbl: gt*1, **preds}
+    items = {ctlbl: ct*1, gtlbl: gt*1, **preds}
 
     if clahe:
-        items[imglbl] = ct_helper.clahe(items[imglbl])
+        items[ctlbl] = ct_helper.clahe(items[ctlbl])
 
     if crop2roi:
-        roi = ct_helper.ct_roi(items[imglbl], True)
+        roi = ct_helper.ct_roi(items[ctlbl], True)
         items = {p: items[p][roi] for p in items}
 
     if zoom2segments:
-        notzoom_img = items[imglbl]
+        notzoom_img = items[ctlbl]
 
         orig_ratio = notzoom_img.shape[1] / notzoom_img.shape[0]
         zoom_roi = ct_helper.segment_roi(
-            [items[p] for p in items if p != imglbl],
+            [items[p] for p in items if p != ctlbl],
             wh_ratio=orig_ratio,
             mindim=[20 / spacing[0], 20 / spacing[1], -1],
         )
@@ -54,7 +53,7 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_or
     #         if origsize_lbl in items:
     #             items[origsize_lbl]=CTHelper.claheCT(items[origsize_lbl])
 
-    ct = items[imglbl]
+    ct = items[ctlbl]
 
     gt = items[gtlbl]
     normalimg = (ct - ct.min()) / (ct.max() - ct.min() + epsilon)
@@ -72,7 +71,7 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_or
 
         if p == origsize_lbl:
             pass
-        elif p != imglbl:
+        elif p != ctlbl:
             fp = (gt != x) & (x > 0)
             fn = (gt != x) & (gt > 0)
             tp = (gt == x) & (gt > 0)
@@ -81,11 +80,15 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_or
             data[p]["tp"] = tp
 
     mri_cmap = "bone"  # plotui.customMRIColorMapForMPL_TPFPFN()
+    if not show_orig_size_ct and origsize_lbl in items:
+        del data[origsize_lbl]
+    if not show_zoomed_ct and ctlbl in items:
+        del data[ctlbl]
+    col = min(len(data), col)
+    row = (len(data) - 1) // col + 1
 
-    col = min(len(items), col)
-    row = (len(items) - 1) // col + 1
-    zs = items[imglbl].shape[2]
-
+    zs = data[gtlbl]['pred'].shape[2]
+    # print(gt.shape, zs)
     z_titles = z_titles + [i for i in range(len(z_titles), zs)]
     for anim in range(zs):
 
@@ -96,22 +99,21 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, imglbl='CT', show_or
         aspect = spacing[0] / spacing[1]
         fig.suptitle(f"frame: {z_titles[anim]}")
         axes = axes.reshape(-1)
+        # print(axes.shape)
         for i, p in enumerate(data):
             current = {d: data[p][d][:, :, anim] for d in data[p]}
 
-            if p == imglbl:
-                if show_zoomed_ct:
-                    axes[i].imshow(current["pred"], cmap=mri_cmap, vmin=0, vmax=1,
-                                   alpha=1, interpolation="nearest", aspect=aspect,)
+            if p == ctlbl:
+                axes[i].imshow(current["pred"], cmap=mri_cmap, vmin=0, vmax=1,
+                               alpha=1, interpolation="nearest", aspect=aspect,)
             elif p == origsize_lbl:
-                if show_orig_size_ct:
-                    axes[i].imshow(current["pred"], cmap=mri_cmap, vmin=0, vmax=1,
-                                   alpha=1, interpolation="nearest", aspect=aspect,)
+                axes[i].imshow(current["pred"], cmap=mri_cmap, vmin=0, vmax=1,
+                               alpha=1, interpolation="nearest", aspect=aspect,)
 
-                    y, x = zoom_roi[0].start, zoom_roi[1].start
-                    h, w = zoom_roi[0].stop - y, zoom_roi[1].stop - x
+                y, x = zoom_roi[0].start, zoom_roi[1].start
+                h, w = zoom_roi[0].stop - y, zoom_roi[1].stop - x
 
-                    axes[i].add_patch(Rectangle((x, y), w, h, facecolor="none", edgecolor="blue", lw=2,))
+                axes[i].add_patch(Rectangle((x, y), w, h, facecolor="none", edgecolor="blue", lw=2,))
             else:
 
                 if add_backimg:

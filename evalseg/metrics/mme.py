@@ -189,8 +189,8 @@ class MME(MetricABS):
                 dci.tpu = 1
                 dci.fnu = dci.tpuc - 1
 
-                m[U][TP] = dci.tpu
-                m[U][FN] = dci.fnu
+                m[U][TP] += dci.tpu
+                m[U][FN] += dci.fnu
                 if debug[U]:
                     print(f"  U tp+{f(dci.tpu)}  fn+{f(dci.fnu)}      rel[r+][{ri}][p+]=={dci.tpuc}")
                 add_info(info, U, "r+", ri, dci.tpu, dci.fnu, 0)
@@ -321,18 +321,20 @@ class MME(MetricABS):
             dc.prs[pi] = dci = common.Object()
             # dci.component_p = dc.pred_labels == pi
             dci.component_pred = dc.rel["p+"][pi]['comp']
+            m = resc["total"]
             if debug[UI] and is2d:
 
                 ui.multi_plot_2d(
-                    dci.component_pred,
+                    None,
                     dci.component_pred,
                     {
                         # 'all_pred': dci.component_pred,
                         # "region": ui_regions,
-                        **{f'p{i}': dc.rel['r+'][i]['comp']
-                           for i in dc.rel["p+"][ri]["r+"]['idx']
+                        **{f'r{i}': dc.rel['r+'][i]['comp']
+                           for i in dc.rel["p+"][pi]["r+"]['idx']
                            }
                     },
+                    gtlbl=f'pred {pi}',
                     z_titles=[f'{debug_prefix} pi={pi}'],
                     show_orig_size_ct=0,
                     # 'zoom2segments': 0
@@ -345,7 +347,7 @@ class MME(MetricABS):
 
             fpd = int(len(dc.rel["p+"][pi]["r+"]["idx"]) == 0)
 
-            resc["total"][D][FP] += fpd
+            m[D][FP] += fpd
             if debug[D]:
                 print(f" D FP+{f(fpd)}      pi={pi}, r={dc.rel['p+'][pi]['r+']['idx']}==0")
             add_info(info, D, "p+", pi, 0, 0, fpd)
@@ -353,7 +355,7 @@ class MME(MetricABS):
             # TOTAL DURATION================================={
             if fpd:
                 dci.volume_fp = (dci.component_pred).sum() * dc.helperc["voxel_volume"]
-                resc["total"][T][FP] += dci.volume_fp
+                m[T][FP] += dci.volume_fp
                 if debug[T]:
                     print(f" T FP+{f(dci.volume_fp)}      pi={pi}, no related gt")
                 add_info(info, T, "p+", pi, 0, 0, dci.volume_fp)
@@ -373,7 +375,7 @@ class MME(MetricABS):
             dci.fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
             if dci.fpuc > 0:
                 dci.fpu = dci.fpuc-1
-                m[U][FP] = dci.fpu
+                m[U][FP] += dci.fpu
                 if debug[U]:
                     print(f"  U fp+{f(dci.fpu)}      rel[p+][{pi}][r+]=={dci.fpuc}")
                 add_info(info, U, "p+", pi, 0, 0, dci.fpu)
