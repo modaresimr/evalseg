@@ -145,7 +145,8 @@ class MME(MetricABS):
             if debug[UI] and is2d:
                 ui_regions = dc.gt_regions.copy()
                 ndst = hci["skgt_normalized_dst"].copy()
-                ndst[ndst > 2] = 2
+                ndst[ndst > 1] = 1
+                # ndst[ndst > 2] = 0
                 ndst[hci["gt_border"]] = 1
 
                 ui_regions[ndst == 0] = 0
@@ -159,30 +160,40 @@ class MME(MetricABS):
                         **{f'p{i}': dc.rel['p+'][i]['comp']
                            for i in dc.rel["r+"][ri]["p+"]['idx']
                            }
-                    }, args={
-                        'z_titles': [f'{debug_prefix} ri={ri}'],
-                        'add_notzoom_img': 0
-                    })
+                    },
+                    z_titles=[f'{debug_prefix} ri={ri}'],
+                    show_orig_size_ct=0,
+                    # 'zoom2segments': 0
+                )
             # dci.rel_p_gt_comps, dci.rel_p_gt_idx = _get_component_of(dc.gt_labels, dc.gt_labels[dci.component_pred], dc.gN)
 
             # Uniformity (TP and FN)....{
             # dci.tpuc = _Z(dc.rel, "r+", ri, "p+")
+            # dci.tpuc = len(dc.rel["r+"][ri]["p+"]['idx'])
+            # dci.tpu = 1 / dci.tpuc if dci.tpuc > 0 else 0
+
+            # if calc_not_exist or dci.tpuc > 0:
+            #     m[U][TP] = dci.tpu
+            #     m[U][FN] = 1 - dci.tpu
+            #     if debug[U]:
+            #         print(f"  U tp+{f(dci.tpu)}  fn+{f(1-dci.tpu)}           Z[r+][{ri}][p+]=={f(dci.tpuc)}")
+            #         if debug[UI] and is2d and False:
+            #             if len(dc.rel["r+"][ri]["p+"]['idx']):
+            #                 ui.multi_plot_img({
+            #                     f'p{i}': dc.rel['p+'][i]['comp']
+            #                     for i in dc.rel["r+"][ri]["p+"]['idx']
+            #                 }, title=f"_Z={dci.tpuc} tpu={dci.tpu} ri={ri} pi={dc.rel['r+'][ri]['p+']['idx']}")
+                # add_info(info, U, "r+", ri, dci.tpu, 1 - dci.tpu, 0)
             dci.tpuc = len(dc.rel["r+"][ri]["p+"]['idx'])
-            dci.tpu = 1 / dci.tpuc if dci.tpuc > 0 else 0
+            if dci.tpuc > 0:
+                dci.tpu = 1
+                dci.fnu = dci.tpuc - 1
 
-            if calc_not_exist or dci.tpuc > 0:
                 m[U][TP] = dci.tpu
-                m[U][FN] = 1 - dci.tpu
+                m[U][FN] = dci.fnu
                 if debug[U]:
-                    print(f"  U tp+{f(dci.tpu)}  fn+{f(1-dci.tpu)}           Z[r+][{ri}][p+]=={f(dci.tpuc)}")
-                    if debug[UI] and is2d:
-                        if len(dc.rel["r+"][ri]["p+"]['idx']):
-                            ui.multi_plot_img({
-                                f'p{i}': dc.rel['p+'][i]['comp']
-                                for i in dc.rel["r+"][ri]["p+"]['idx']
-                            }, title=f"_Z={dci.tpuc} tpu={dci.tpu} ri={ri} pi={dc.rel['r+'][ri]['p+']['idx']}")
-
-                add_info(info, U, "r+", ri, dci.tpu, 1 - dci.tpu, 0)
+                    print(f"  U tp+{f(dci.tpu)}  fn+{f(dci.fnu)}      rel[r+][{ri}][p+]=={dci.tpuc}")
+                add_info(info, U, "r+", ri, dci.tpu, dci.fnu, 0)
             # Uniformity}
 
             # dci.pred_in_region = dci.component_pred & (dc.gt_regions == ri)
@@ -195,9 +206,9 @@ class MME(MetricABS):
 
             # Total Volume================================={
             dci.volume_gt = dci.component_gt.sum() * dc.helperc["voxel_volume"]
-            dci.volume_pred = (dci.component_pred.sum() * dc.helperc["voxel_volume"])
+            dci.volume_pred = (dci.pred_in_region.sum() * dc.helperc["voxel_volume"])
 
-            dci.volume_tp = (dci.component_pred & dci.component_gt).sum() * dc.helperc["voxel_volume"]
+            dci.volume_tp = (dci.pred_in_region & dci.component_gt).sum() * dc.helperc["voxel_volume"]
             dci.volume_fn = dci.volume_gt - dci.volume_tp
             dci.volume_fp = dci.volume_pred - dci.volume_tp
             m[T][TP] += dci.volume_tp
@@ -258,7 +269,7 @@ class MME(MetricABS):
                 if debug[B]:
                     # print(f"     B volume_tp_rate={dci.volume_tp_rate}")
                     print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
-                    if debug['UI'] and (test.ndim == 2 or test.shape[2] == 1):
+                    if debug[UI] and is2d:
                         ui.multi_plot_img({
                             "gtskel": dci.gt_skel,
                             "pborder+minskel": dci.border_pred_with_skel,
@@ -309,11 +320,29 @@ class MME(MetricABS):
         for pi in range(1, dc.pN + 1):
             dc.prs[pi] = dci = common.Object()
             # dci.component_p = dc.pred_labels == pi
+            dci.component_pred = dc.rel["p+"][pi]['comp']
+            if debug[UI] and is2d:
+
+                ui.multi_plot_2d(
+                    dci.component_pred,
+                    dci.component_pred,
+                    {
+                        # 'all_pred': dci.component_pred,
+                        # "region": ui_regions,
+                        **{f'p{i}': dc.rel['r+'][i]['comp']
+                           for i in dc.rel["p+"][ri]["r+"]['idx']
+                           }
+                    },
+                    z_titles=[f'{debug_prefix} pi={pi}'],
+                    show_orig_size_ct=0,
+                    # 'zoom2segments': 0
+                )
+
             # DETECTION================================={
-            gt_labels = dc.helperc["gt_labels"]
+
             # dci.rel_gts = dc.rel['p+'][pi]['r+']['idx']
             # dci.rel_gt_comps, dci.rel_gts = _get_component_of(gt_labels, gt_labels[dci.component_p], dc.gN)
-            dci.component_pred = dc.rel["p+"][pi]['comp']
+
             fpd = int(len(dc.rel["p+"][pi]["r+"]["idx"]) == 0)
 
             resc["total"][D][FP] += fpd
@@ -334,14 +363,20 @@ class MME(MetricABS):
 
             # Uniformity FP=============================================={
             # fpuc = _Z(dc.rel, "p+", pi, "r+")
-            fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
-            if calc_not_exist or fpuc > 0:
-                fpu = 1 - (1 / fpuc if fpuc > 0 else 0)
-                resc["total"][U][FP] += fpu
+            # fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
+            # if calc_not_exist or fpuc > 0:
+            #     fpu = 1 - (1 / fpuc if fpuc > 0 else 0)
+            #     resc["total"][U][FP] += fpu
+            #     if debug[U]:
+            #         print(f"  U fp+{f(fpu)}             Z[p+][{pi}][r+]=={f(fpuc)}")
+            #     add_info(info, U, "p+", pi, 0, 0, fpu)
+            dci.fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
+            if dci.fpuc > 0:
+                dci.fpu = dci.fpuc-1
+                m[U][FP] = dci.fpu
                 if debug[U]:
-                    print(f"  U fp+{f(fpu)}             Z[p+][{pi}][r+]=={f(fpuc)}")
-                add_info(info, U, "p+", pi, 0, 0, fpu)
-
+                    print(f"  U fp+{f(dci.fpu)}      rel[p+][{pi}][r+]=={dci.fpuc}")
+                add_info(info, U, "p+", pi, 0, 0, dci.fpu)
             # Uniformity}
 
         if return_debug:
