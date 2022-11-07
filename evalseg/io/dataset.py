@@ -1,6 +1,7 @@
 import json
 import os
 import zipfile
+import gzip
 from .. import common
 GT = "GroundTruth"
 CT = "CT"
@@ -37,12 +38,14 @@ class Dataset:
             return self._cache[typ]
 
         if typ == CT:
-            path = self.dataset_info[CT][f"{case}"]
+            path = self.dataset_info[CT].get(f"{case}", None)
         elif typ == GT:
-            path = self.dataset_info[GT][f"{case}"]
+            path = self.dataset_info[GT].get(f"{case}", None)
         else:
-            path = self.dataset_info[PREDS][typ][f"{case}"]
-
+            path = self.dataset_info[PREDS][typ].get(f"{case}", None)
+        if path == None:
+            print(f"can not load {typ} {case}")
+            return None, None
         return self.read_file(path)
 
     def read_file(self, path):
@@ -57,8 +60,11 @@ class Dataset:
     def get_prediction(self, method, id):
         return self.get(method, id)
 
-    def get_prediction_methods(self):
-        return list(self.dataset_info[PREDS].keys())
+    def get_prediction_methods(self, case=None):
+        all_preds = list(self.dataset_info[PREDS].keys())
+        if case:
+            all_preds = [p for p in all_preds if case in self.dataset_info[PREDS][p]]
+        return all_preds
 
     def load_all_of_case(self, case, load_ct=True, load_gt=True, load_preds=None):
         self.clear_case()
@@ -83,6 +89,7 @@ class Dataset:
     def _load(self, inp):
         typ = inp[0]
         case = inp[1]
+
         return self.get(typ, case, compress=True)
 
     def get_available_ids(self):
@@ -136,14 +143,18 @@ def load_dataset_info(path):
         return path
 
 
-def get_file(path):
+def get_file(path: str):
     try:
         if "#" in path:
             zname, zpath = path.split("#")
             with zipfile.ZipFile(zname, "r") as archive:
                 return archive.read(zpath)
-        with open(path, "r") as f:
-            return f.read()
+        if path.endswith('.gz'):
+            with gzip.open(path) as f:
+                return f.read()
+        else:
+            with open(path, "rb") as f:
+                return f.read()
     except Exception as e:
         print(f"can not load {path}: {e}")
         return None
