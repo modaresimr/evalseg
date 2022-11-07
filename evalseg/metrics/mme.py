@@ -49,6 +49,7 @@ class MME(MetricABS):
         gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
         helperc["gt_regions"] = gt_regions
         helperc["components"] = {}
+        helperc["total_gt_volume"] = 0
         for i in range(1, gN + 1):
             gt_component = gt_labels == i
             gt_region = gt_regions == i
@@ -58,6 +59,7 @@ class MME(MetricABS):
             in_dst = geometry.distance(gt_no_border, spacing=spacing, mode="in")
             out_dst = geometry.distance(gt_with_border, spacing=spacing, mode="out")
             gt_dst = out_dst + in_dst
+            helperc["total_gt_volume"] += gt_component.sum() * helperc["voxel_volume"]
 
             skeleton = (geometry.skeletonize(gt_component, spacing=spacing) > 0)
             skeleton_dst = geometry.distance(skeleton, spacing=spacing, mode="out")
@@ -96,7 +98,7 @@ class MME(MetricABS):
 
         return helperc
 
-    def evaluate(self, test: np.ndarray, return_debug: bool = False, debug_prefix='', **kwargs):
+    def evaluate(self, test: np.ndarray, return_debug: bool = False, debug_prefix='', normalize_total_duration=True, **kwargs):
         calc_not_exist = False  # tmp
         reference = self.reference
         debug = self.debug
@@ -130,11 +132,14 @@ class MME(MetricABS):
         # print('rel', dc.rel)
         resc["total"] = copy.deepcopy(m_def)
         dc.gts = {}
+
+        dc.total_gt_volume = max(dc.helperc["total_gt_volume"], dc.helperc["voxel_volume"]) if normalize_total_duration else 1
         for ri in range(1, dc.gN + 1):
             dc.gts[ri] = dci = common.Object()
             hci = dc.helperc["components"][ri]
 
             dci.component_gt = dc.rel["r+"][ri]["comp"]
+
             # dci.component_gt = hci['gt']
             m = copy.deepcopy(m_def)
 
@@ -205,12 +210,17 @@ class MME(MetricABS):
             #         dci.pred_in_region = dci.pred_in_region & ~dc.gt_regions=
 
             # Total Volume================================={
+            dci.tp_comp = dci.pred_in_region & dci.component_gt
+            dci.fn_comp = (~dci.pred_in_region) & dci.component_gt
+            dci.fp_comp = dci.pred_in_region & ~dci.component_gt
+
             dci.volume_gt = dci.component_gt.sum() * dc.helperc["voxel_volume"]
             dci.volume_pred = (dci.pred_in_region.sum() * dc.helperc["voxel_volume"])
 
-            dci.volume_tp = (dci.pred_in_region & dci.component_gt).sum() * dc.helperc["voxel_volume"]
-            dci.volume_fn = dci.volume_gt - dci.volume_tp
-            dci.volume_fp = dci.volume_pred - dci.volume_tp
+            dci.volume_tp = dci.tp_comp.sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume
+            dci.volume_fn = dci.fn_comp.sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume  # dci.volume_gt - dci.volume_tp
+            dci.volume_fp = dci.fp_comp.sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume  # dci.volume_pred - dci.volume_tp
+
             m[T][TP] += dci.volume_tp
             m[T][FN] += dci.volume_fn
             m[T][FP] += dci.volume_fp
@@ -235,48 +245,95 @@ class MME(MetricABS):
             # Relative Volume}
 
             # Boundary================================{
-            dci.border_gt = hci["gt_border"]
-            dci.gt_skel = hci["gt_skeleton"]
-            dci.border_pred_with_skel = geometry.find_binary_boundary(dci.pred_in_region | dci.gt_skel, mode="inner")
+                dci.gt_skel = hci["gt_skeleton"]
+                dci.skgtn_dst_in = hci["skgt_normalized_dst_in"]
+                dci.skgtn_dst_out = hci["skgt_normalized_dst_out"]
 
-            dci.skgtn_dst_in = hci["skgt_normalized_dst_in"]
-            # dci.border_pred_with_skel_inside_gt = dci.border_pred_with_skel & dci.component_gt
-            # dci.border_pred_with_skel_outside_gt = dci.border_pred_with_skel & (~dci.component_gt)
-            dci.skgtn_dst_pred_in = dci.skgtn_dst_in[dci.border_pred_with_skel]
-            # dci.skgtn_dst_pred_in = dci.skgtn_dst_pred_in[dci.skgtn_dst_pred_in > 0]
-            # print('skgtn_dst_pred_in', dci.skgtn_dst_pred_in)
-            if return_debug:
-                dci.skgtn_dst_pred_in_v = np.zeros(dci.skgtn_dst_in.shape)
-                dci.skgtn_dst_pred_in_v[dci.border_pred_with_skel] = dci.skgtn_dst_in[dci.border_pred_with_skel]
+                dci.boundary_tpc = dci.skgtn_dst_in[dci.tp_comp]
+                dci.boundary_fnc = dci.skgtn_dst_in[dci.fn_comp]
+                dci.boundary_fpc = dci.skgtn_dst_out[dci.fp_comp]
 
-            dci.skgtn_dst_out = hci["skgt_normalized_dst_out"]
-            dci.skgtn_dst_pred_out = dci.skgtn_dst_out[dci.border_pred_with_skel]
+                if debug[B] or return_debug:
+                    dci.boundary_tpc_v = np.zeros_like(dci.skgtn_dst_in)
+                    dci.boundary_fpc_v = np.zeros_like(dci.skgtn_dst_in)
+                    dci.boundary_fnc_v = np.zeros_like(dci.skgtn_dst_in)
+                    dci.boundary_tpc_v[dci.tp_comp] = dci.boundary_tpc
+                    dci.boundary_fpc_v[dci.fp_comp] = dci.boundary_fpc
+                    dci.boundary_fnc_v[dci.fn_comp] = dci.boundary_fnc
 
-            if return_debug:
-                dci.skgtn_dst_pred_out_v = np.zeros(dci.skgtn_dst_out.shape)
-                dci.skgtn_dst_pred_out_v[dci.border_pred_with_skel] = dci.skgtn_dst_out[dci.border_pred_with_skel]
+                dci.boundary_gtc_sum = dci.boundary_tpc.sum()+dci.boundary_fnc.sum()
+                if dci.boundary_gtc_sum > 0:
+                    dci.boundary_fp = min(1, dci.boundary_fpc.sum()/dci.boundary_gtc_sum)
+                    dci.boundary_fn = dci.boundary_fnc.sum() / dci.boundary_gtc_sum
+                    dci.boundary_tp = dci.boundary_tpc.sum() / dci.boundary_gtc_sum
 
-            dci.skgtn_dst_pred = np.concatenate([dci.skgtn_dst_pred_out, dci.skgtn_dst_pred_in])
-            dci.skgtn_dst_pred = dci.skgtn_dst_pred[dci.skgtn_dst_pred > 0]
+                    m[B][TP] += dci.boundary_tp
+                    m[B][FN] += dci.boundary_fn
+                    m[B][FP] += dci.boundary_fp
+                    if debug[B]:
+                        if debug[UI] and is2d:
+                            tmp_out = dci.skgtn_dst_out.copy()
+                            tmp_out[tmp_out > 2] = 0
+                            ui.multi_plot_img({
+                                "gtskel": dci.gt_skel,
+                                "tp": dci.boundary_tpc_v,
+                                "fn": dci.boundary_fnc_v,
+                                "fp": dci.boundary_fpc_v,
+                                'skeldst_in': dci.skgtn_dst_in,
+                                'skeldst_out': tmp_out,
+                                **{f'p+{i}': dc.rel['p+'][i]['comp'] for i in dc.rel["r+"][ri]["p+"]['idx']}
+                            }, title=f'B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}')
 
-            dci.boundary_fp = (min(1, dci.skgtn_dst_pred_out.mean())if len(dci.skgtn_dst_pred_out) > 0 else 0)
-            dci.boundary_fn = (dci.skgtn_dst_pred_in.mean()if len(dci.skgtn_dst_pred_in) > 0 else 0)
-            dci.boundary_tp = max(0, 1 - dci.boundary_fn)
-            if calc_not_exist or dci.volume_tp_rate > 0:
-                m[B][TP] += dci.boundary_tp
-                m[B][FN] += dci.boundary_fn
-                m[B][FP] += dci.boundary_fp
-                if debug[B]:
-                    # print(f"     B volume_tp_rate={dci.volume_tp_rate}")
-                    print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
-                    if debug[UI] and is2d:
-                        ui.multi_plot_img({
-                            "gtskel": dci.gt_skel,
-                            "pborder+minskel": dci.border_pred_with_skel,
-                            **{f'p+{i}': dc.rel['p+'][i]['comp'] for i in dc.rel["r+"][ri]["p+"]['idx']}
-                        }, title=f'B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}')
-                add_info(info, B, "r+", ri, dci.boundary_tp, dci.boundary_fn, dci.boundary_fp,)
-            # Boundary}
+                        print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
+                    add_info(info, B, "r+", ri, dci.boundary_tp, dci.boundary_fn, dci.boundary_fp,)
+            # } Boundary
+            # old boundary {
+            # # dci.border_gt = hci["gt_border"]
+            # dci.gt_skel = hci["gt_skeleton"]
+            # dci.border_pred_with_skel = geometry.find_binary_boundary(dci.pred_in_region, mode="inner")
+            # dci.border_pred_with_skel |= dci.pred_in_region ^ dci.component_gt
+
+            # # dci.border_pred_with_skel_inside_gt = dci.border_pred_with_skel & dci.component_gt
+            # # dci.border_pred_with_skel_outside_gt = dci.border_pred_with_skel & (~dci.component_gt)
+
+            # # dci.skgtn_dst_pred_in = dci.skgtn_dst_pred_in[dci.skgtn_dst_pred_in > 0]
+            # # print('skgtn_dst_pred_in', dci.skgtn_dst_pred_in)
+            # if return_debug or debug[B]:
+            #     dci.skgtn_dst_pred_in_v = np.zeros(dci.skgtn_dst_in.shape)
+            #     dci.skgtn_dst_pred_in_v[dci.border_pred_with_skel] = dci.skgtn_dst_in[dci.border_pred_with_skel]
+
+            # dci.skgtn_dst_out = hci["skgt_normalized_dst_out"]
+            # dci.skgtn_dst_pred_out = dci.skgtn_dst_out[dci.border_pred_with_skel]
+
+            # if return_debug or debug[B]:
+            #     dci.skgtn_dst_pred_out_v = np.zeros(dci.skgtn_dst_out.shape)
+            #     dci.skgtn_dst_pred_out_v[dci.border_pred_with_skel] = dci.skgtn_dst_out[dci.border_pred_with_skel]
+
+            # dci.skgtn_dst_pred = np.concatenate([dci.skgtn_dst_pred_out, dci.skgtn_dst_pred_in])
+            # dci.skgtn_dst_pred = dci.skgtn_dst_pred[dci.skgtn_dst_pred > 0]
+
+            # dci.boundary_fp = (min(1, dci.skgtn_dst_pred_out.mean())if len(dci.skgtn_dst_pred_out) > 0 else 0)
+            # dci.boundary_fn = (dci.skgtn_dst_pred_in.mean()if len(dci.skgtn_dst_pred_in) > 0 else 0)
+            # dci.boundary_tp = max(0, 1 - dci.boundary_fn)
+            # if calc_not_exist or dci.volume_tp_rate > 0:
+            #     m[B][TP] += dci.boundary_tp
+            #     m[B][FN] += dci.boundary_fn
+            #     m[B][FP] += dci.boundary_fp
+            #     if debug[B]:
+            #         # print(f"     B volume_tp_rate={dci.volume_tp_rate}")
+            #         if debug[UI] and is2d:
+            #             ui.multi_plot_img({
+            #                 "gtskel": dci.gt_skel,
+            #                 "pborder+minskel": dci.border_pred_with_skel,
+            #                 'skeldst_in': dci.skgtn_dst_pred_in_v,
+            #                 'skeldst_out': dci.skgtn_dst_pred_out_v,
+
+            #                 **{f'p+{i}': dc.rel['p+'][i]['comp'] for i in dc.rel["r+"][ri]["p+"]['idx']}
+            #             }, title=f'B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}')
+
+            #         print(f"     B tp+{f(dci.boundary_tp)} fn+{f(dci.boundary_fn)} fp+{f(dci.boundary_fp)}  ri={ri}  ")
+            #     add_info(info, B, "r+", ri, dci.boundary_tp, dci.boundary_fn, dci.boundary_fp,)
+            # OLD Boundary}
 
             # Detection===================================={
             tpd = int(dci.volume_tp_rate > alpha1)
@@ -300,10 +357,10 @@ class MME(MetricABS):
             resc["components"][ri] = {
                 "MME": m,
                 # 'hdn': self.info(dci.pred_dst / dci.max_dst_gt),
-                "skgtn": dci.skgtn_dst_pred.mean()if len(dci.skgtn_dst_pred)else 0,
-                "skgtn_tp": 1 - (np.clip(dci.skgtn_dst_pred, 0, 1).mean() if len(dci.skgtn_dst_pred) else 0),
-                "skgtn_fn": dci.skgtn_dst_pred_in.mean() if len(dci.skgtn_dst_pred_in) else 0,
-                "skgtn_fp": dci.skgtn_dst_pred_out.mean() if len(dci.skgtn_dst_pred_out) else 0,
+                # "skgtn": dci.skgtn_dst_pred.mean()if len(dci.skgtn_dst_pred)else 0,
+                # "skgtn_tp": 1 - (np.clip(dci.skgtn_dst_pred, 0, 1).mean() if len(dci.skgtn_dst_pred) else 0),
+                # "skgtn_fn": dci.skgtn_dst_pred_in.mean() if len(dci.skgtn_dst_pred_in) else 0,
+                # "skgtn_fp": dci.skgtn_dst_pred_out.mean() if len(dci.skgtn_dst_pred_out) else 0,
             }
         resc["pN"] = dc.pN
         resc["gN"] = dc.gN
@@ -354,7 +411,7 @@ class MME(MetricABS):
             # DETECTION}
             # TOTAL DURATION================================={
             if fpd:
-                dci.volume_fp = (dci.component_pred).sum() * dc.helperc["voxel_volume"]
+                dci.volume_fp = (dci.component_pred).sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume
                 m[T][FP] += dci.volume_fp
                 if debug[T]:
                     print(f" T FP+{f(dci.volume_fp)}      pi={pi}, no related gt")
