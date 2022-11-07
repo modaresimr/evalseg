@@ -26,10 +26,14 @@ class MultiClassMetric(MetricABS):
                  for c in self.metrics]
         parallel_res = parallel_runner(_evaluate_helper, items, parallel=parallel)
         res = {c: {} for c in self.metrics}
-
+        debug_info = {c: {} for c in self.metrics}
         for k, v in parallel_res:
-            res[k['label']] = v
-
+            if return_debug:
+                res[k['label']], debug_info[k['label']] = v
+            else:
+                res[k['label']] = v
+        if return_debug:
+            return res, debug_info
         return res
 
     def evaluate_multi(self, test_dic, return_debug=False, parallel=1, **kwargs):
