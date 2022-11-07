@@ -1,0 +1,35 @@
+{
+  "Task001_LiverTumor": {
+    "101.nii": [
+      { "slice": { "ax": "z", "frame": 505 }, "algs": ["2-CE", "Focal", "Iou"] },
+      { "slice": { "ax": "z", "frame": 505 }, "algs": ["2-CE", "Iou", "pGDice"] },
+      { "slice": { "ax": "z", "frame": 505 }, "algs": ["2-CE", "DiceTopK10", "2-Dice"] },
+      { "slice": { "ax": "x", "frame": 259 }, "algs": ["TopK10", "SS", "Tversky"] }
+    ],
+    "13.nii": [{ "slice": { "ax": "x", "frame": 136 }, "algs": ["pCE", "TopK10", "Tversky"] }],
+    "108.nii": [
+      { "slice": { "ax": "x", "frame": 176 }, "algs": ["DiceFocal", "pGDice", "Tversky"] },
+      { "slice": { "ax": "z", "frame": 535 }, "algs": ["Tversky", "pGDice", "2-Dice"] }
+    ],
+    "118.nii": [{ "slice": { "ax": "x", "frame": 93 }, "algs": ["2-CE", "pGDice", "WCE"] }],
+    "122.nii": [{ "slice": { "ax": "x", "frame": 231 }, "algs": ["2-CE", "2-Dice", "DiceCE"] }],
+    "123.nii": [{ "slice": { "ax": "z", "frame": 262 }, "algs": ["2-CE", "pGDice", "GDice"] }],
+    "126.nii": [{ "slice": { "ax": "y", "frame": 319 }, "algs": ["2-DiceCE", "Asym", "DiceHD"] }],
+    "19.nii": [{ "slice": { "ax": "z", "frame": 427 }, "algs": ["2-CE", "SampleDice", "GDice"] }],
+    "240.nii": [{ "slice": { "ax": "z", "frame": 25 }, "algs": ["2-CE", "GDice", "SS"] }],
+    "334.nii": [{ "slice": { "ax": "z", "frame": 32 }, "algs": ["2-CE", "2-DiceCE", "GDice"] }]
+  },
+  "Task002_Pancreas": {
+    "024.nii": [{ "slice": { "ax": "z", "frame": 53 }, "algs": ["pCE", "SS", "WCE"] }],
+    "040.nii": [{ "slice": { "ax": "z", "frame": 20 }, "algs": ["Dice", "SS", "WCE"] }],
+    "071.nii": [{ "slice": { "ax": "z", "frame": 56 }, "algs": ["2-DiceCE", "DiceCE", "WCE"] }],
+    "075.nii": [{ "slice": { "ax": "z", "frame": 71 }, "algs": ["2-DiceFocal", "SquareDice", "WCE"] }],
+    "077.nii": [{ "slice": { "ax": "z", "frame": 35 }, "algs": ["Asym", "SS", "WCE"] }],
+    "087.nii": [{ "slice": { "ax": "z", "frame": 57 }, "algs": ["Focal", "TopK50", "WCE"] }],
+    "166.nii": [{ "slice": { "ax": "y", "frame": 268 }, "algs": ["2-CE", "DiceCE", "WCE"] }]
+  },
+  "TaskA_Example": {
+    "370.nii.gz": [{ "slice": { "ax": "z", "frame": 0 }, "algs": ["p1", "p2", "p3"] }],
+    "394.nii.gz": [{ "slice": { "ax": "z", "frame": 0 }, "algs": ["p1", "p2", "p3"] }]
+  }
+}
