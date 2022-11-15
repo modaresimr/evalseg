@@ -10,6 +10,7 @@ from typing_extensions import Literal
 
 from .. import common, geometry, ui
 from ..common import Cache
+from ..compress import compress_arr, decompress_arr
 from . import MetricABS
 
 epsilon = 0.0001
@@ -82,7 +83,7 @@ class MME(MetricABS):
             #        'normalize_dst': normalize_dst,
             #        }
             # print({k: tmp[k][idx] for k in tmp})
-            helperc["components"][i] = {
+            helperc["components"][i] = compress_arr({
                 "gt": gt_component,
                 "gt_region": gt_region,
                 "gt_border": gt_border,
@@ -95,7 +96,8 @@ class MME(MetricABS):
                 "skgt_normalized_dst": normalize_dst,
                 "skgt_normalized_dst_in": normalize_dst_inside,
                 "skgt_normalized_dst_out": normalize_dst_outside,
-            }
+            })
+
             # if self.debug.get('show_precompute', 0):
             #     self.debug_helper(helperc['components'][i])
 
@@ -139,7 +141,7 @@ class MME(MetricABS):
         dc.total_gt_volume = max(dc.helperc["total_gt_volume"], dc.helperc["voxel_volume"]) if normalize_total_duration else 1
         for ri in range(1, dc.gN + 1):
             dc.gts[ri] = dci = common.Object()
-            hci = dc.helperc["components"][ri]
+            hci = decompress_arr(dc.helperc["components"][ri])
 
             dci.component_gt = dc.rel["r+"][ri]["comp"]
 
