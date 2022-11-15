@@ -2,7 +2,7 @@ import numpy as np
 
 
 def slice(data, spacing, dim, cuts):
-    if dim == -1 or dim == None:
+    if dim == -1 or dim == 'all' or dim == None:
         return data, spacing
 
     if dim == 1 or dim == 'y':
