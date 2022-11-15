@@ -2,7 +2,7 @@ import k3d
 
 from ipywidgets import Box, Layout, Output
 from IPython.display import display
-item_layout = Layout(height='auto', min_width='33%', width='auto', border='1px solid black')
+
 box_layout = Layout(  # overflow='scroll hidden',
     border='1px solid black',
     width='100%',
@@ -17,7 +17,13 @@ class k3d_subplots:
         display(self.box)
         self.plots = []
 
-    def add_plot(self, plot, title=None):
+    def add_plot(self, plot, title=None, siz=.3):
+        item_layout = Layout(height='auto',
+                             min_width=f'{siz*100}%',
+                             width='auto',
+                             border='1px solid black',
+                             margin='0px')
+
         out = Output(layout=item_layout)
         self.box.children += (out,)
         with out:

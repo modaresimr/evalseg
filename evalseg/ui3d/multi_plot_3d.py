@@ -403,36 +403,55 @@ def plot_3d_old(ct, gt, pred, *, dst=None, spacing=None, ctlbl='CT', show_orig_s
 
 
 def plot_3d(ct, gt, pred, *, dst=None, spacing=None, ctlbl='CT', show_orig_size_ct=True,
-            zoom2segments=True, scaledown=(5, 5, 1), col=5, show=True, gtlbl="GroundTruth"):
+            zoom2segments=True, show_ct=True, show_gt=True, show_pred=True, scaledown=(5, 5, 1), col=5, show=True, gtlbl="GroundTruth"):
     subplots = k3d_subplots()
     spacing = np.array([spacing[0], spacing[1], spacing[2]])
     # spacing = np.array(spacing)
     gt = skimage.transform.downscale_local_mean(gt, scaledown)
     pred = skimage.transform.downscale_local_mean(pred, scaledown)
-    if ct is not None:
+
+    if show_ct and ct is not None:
         ct = skimage.transform.downscale_local_mean(ct, scaledown)
 
+        if zoom2segments:
+            zoom_roi = ct_helper.segment_roi(
+                [gt, pred],
+                mindim=[20 / spacing[0], 20 / spacing[1], -1],
+            )
+            rate = max([(zoom_roi[i].stop-zoom_roi[i].start)/gt.shape[i] for i in range(3)])
+            zoom_roi = ct_helper.segment_roi(
+                [gt, pred],
+                mindim=[gt.shape[i]*rate for i in range(3)],
+            )
+
+            gt = gt[zoom_roi]
+            pred = pred[zoom_roi]
+            ct = ct[zoom_roi]
+
         plot_ct = k3d.plot(grid=get_bound(ct), name=ctlbl, grid_auto_fit=False, camera_auto_fit=0)
-        subplots.add_plot(plot_ct, ctlbl)
+        subplots.add_plot(plot_ct, ctlbl, siz=1/(1+show_gt+show_pred))
+        ct[ct > 400] = 0
+        ct[gt > 0] = 1000
         plot_ct += get_plot(ct, spacing, 'ct', 'ct')
         plot_ct += get_plot(gt, spacing, 'gt', 'ct')
         plot_ct.camera = [ct.shape[0]/2, ct.shape[1], -ct.shape[2], ct.shape[0]/3, ct.shape[1]/3, ct.shape[2]/3, 1, 0, 0]
 
-    plot_gt = k3d.plot(grid=get_bound(gt), name=gtlbl, grid_auto_fit=False, camera_auto_fit=0)
-    subplots.add_plot(plot_gt, gtlbl)
-
-    # plot_gt.camera = [gt.shape[0]/2, gt.shape[1], -gt.shape[2], gt.shape[0]/3, gt.shape[1]/3, gt.shape[2]/3, 1, 0, 0]
-
-    plot_pred = k3d.plot(grid=get_bound(pred), name=ctlbl, grid_auto_fit=False, camera_auto_fit=0)
-    subplots.add_plot(plot_pred, 'Prediction')
-
     tp = (gt > 0) & (pred > 0)
     fp = (~(gt > 0)) & (pred > 0)
     fn = (gt > 0) & ~(pred > 0)
-    plot_gt += get_plot(tp, spacing, 'tp', 'gt')
-    plot_gt += get_plot(fn, spacing, 'fn', 'gt')
-    plot_pred += get_plot(tp, spacing, 'tp', 'pred')
-    plot_pred += get_plot(fp, spacing, 'fp', 'pred')
+
+    if show_gt:
+        plot_gt = k3d.plot(grid=get_bound(gt), name=gtlbl, grid_auto_fit=False, camera_auto_fit=0)
+        subplots.add_plot(plot_gt, gtlbl, siz=1/(1+show_ct+show_pred))
+        plot_gt += get_plot(tp, spacing, 'tp', 'gt')
+        plot_gt += get_plot(fn, spacing, 'fn', 'gt')
+
+    # plot_gt.camera = [gt.shape[0]/2, gt.shape[1], -gt.shape[2], gt.shape[0]/3, gt.shape[1]/3, gt.shape[2]/3, 1, 0, 0]
+    if show_pred:
+        plot_pred = k3d.plot(grid=get_bound(pred), name=ctlbl, grid_auto_fit=False, camera_auto_fit=0)
+        subplots.add_plot(plot_pred, 'Prediction', siz=1/(1+show_ct+show_gt))
+        plot_pred += get_plot(tp, spacing, 'tp', 'pred')
+        plot_pred += get_plot(fp, spacing, 'fp', 'pred')
 
     subplots.sync_camera_view()
 
@@ -463,7 +482,7 @@ def crange(typ):
     if typ in ['gt']:
         return [0, 1.2]
     if typ == 'ct':
-        return [-200, 900]
+        return [0, 400]
 
 
 def get_bound(arr):
@@ -473,12 +492,22 @@ def get_bound(arr):
 def get_plot(arr, spacing, typ, name):
     colormap = cmap(typ)
     color_range = crange(typ)
+    # if typ == 'ct':
+    # arr[arr > 300] = 0
     print(color_range)
-    return k3d.mip(arr.astype(np.float32),
-                   color_map=colormap,
-                   color_range=color_range,
-                   scaling=spacing,
-                   samples=1024 if typ in ['ct', 'gt'] else 30,
-                   bounds=get_bound(arr),
-                   name=f'{name}-{typ}')
-    return k3d.volume(arr.astype(np.float32), color_map=colormap, scaling=spacing, bounds=bounds, name=f'{name}-{typ}')
+    mode = 2
+    if mode == 1:
+        return k3d.mip(arr.astype(np.float32),
+                       color_map=colormap,
+                       color_range=color_range,
+                       scaling=spacing,
+                       samples=1024 if typ in ['ct', 'gt'] else 30,
+                       bounds=get_bound(arr),
+                       name=f'{name}-{typ}')
+
+    return k3d.volume(arr.astype(np.float32),
+                      color_map=colormap,
+                      color_range=color_range,
+                      scaling=spacing,
+                      alpha_coef=100,
+                      bounds=get_bound(arr), name=f'{name}-{typ}')
