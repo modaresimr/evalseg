@@ -12,7 +12,7 @@ from .. import common, geometry, ui
 from ..common import Cache
 from . import MetricABS
 
-epsilon = 0.00001
+epsilon = 0.0001
 
 TP = "tp"
 FP = "fp"
@@ -63,12 +63,15 @@ class MME(MetricABS):
 
             skeleton = (geometry.skeletonize(gt_component, spacing=spacing) > 0)
             skeleton_dst = geometry.distance(skeleton, spacing=spacing, mode="out")
+            # skeleton_dst[out_dst>skeleton_dst]=out_dst[out_dst>skeleton_dst]# this is an approximation so to avoid negative weights
 
             normalize_dst_inside = in_dst / (skeleton_dst + in_dst + epsilon)
 
             skel_dst = skeleton_dst - out_dst + in_dst
 
-            normalize_dst_outside = np.maximum(0, (out_dst - epsilon) / (skeleton_dst - out_dst + epsilon))
+            deminutor = skeleton_dst - out_dst
+            deminutor[np.abs(deminutor) < epsilon] = epsilon
+            normalize_dst_outside = np.maximum(0, (out_dst) / deminutor)
             # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
             normalize_dst = normalize_dst_inside + normalize_dst_outside
             # idx = (119, 325)
@@ -193,12 +196,13 @@ class MME(MetricABS):
             if dci.tpuc > 0:
                 dci.tpu = 1
                 dci.fnu = dci.tpuc - 1
-
+                dci.fpu = _Z(dc.rel, "r+", ri, "p+") - 1
                 m[U][TP] += dci.tpu
                 m[U][FN] += dci.fnu
+                m[U][FP] += dci.fpu
                 if debug[U]:
-                    print(f"  U tp+{f(dci.tpu)}  fn+{f(dci.fnu)}      rel[r+][{ri}][p+]=={dci.tpuc}")
-                add_info(info, U, "r+", ri, dci.tpu, dci.fnu, 0)
+                    print(f"  U tp+{f(dci.tpu)}  fn+{f(dci.fnu)} fp+{f(dci.fpu)}      rel[r+][{ri}][p+]=={dci.tpuc}")
+                add_info(info, U, "r+", ri, dci.tpu, dci.fnu, dci.fpu)
             # Uniformity}
 
             # dci.pred_in_region = dci.component_pred & (dc.gt_regions == ri)
@@ -214,8 +218,8 @@ class MME(MetricABS):
             dci.fn_comp = (~dci.pred_in_region) & dci.component_gt
             dci.fp_comp = dci.pred_in_region & ~dci.component_gt
 
-            dci.volume_gt = dci.component_gt.sum() * dc.helperc["voxel_volume"]
-            dci.volume_pred = (dci.pred_in_region.sum() * dc.helperc["voxel_volume"])
+            dci.volume_gt = dci.component_gt.sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume
+            dci.volume_pred = (dci.pred_in_region.sum() * dc.helperc["voxel_volume"]) / dc.total_gt_volume
 
             dci.volume_tp = dci.tp_comp.sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume
             dci.volume_fn = dci.fn_comp.sum() * dc.helperc["voxel_volume"] / dc.total_gt_volume  # dci.volume_gt - dci.volume_tp
@@ -231,7 +235,7 @@ class MME(MetricABS):
 
             # Relative Volume=============================={
             dci.volume_tp_rate = dci.volume_tp / dci.volume_gt
-            dci.volume_fn_rate = (dci.volume_fn / dci.volume_gt if dci.volume_gt > 0 else 0)
+            dci.volume_fn_rate = dci.volume_fn / dci.volume_gt
             dci.volume_fp_rate = min(1, dci.volume_fp / dci.volume_gt)
             if calc_not_exist or dci.volume_tp_rate > 0:
                 m[R][TP] += dci.volume_tp_rate
@@ -343,7 +347,7 @@ class MME(MetricABS):
             m[D][FN] = fnd
             m[D][FP] = fpd
             if debug["D"]:
-                print(f" D TP+{f(tpd)}  FN+{f(fnd)} FP+{f(fpd)}     ri={ri}, p+={dc.rel['r+'][ri]['p+']['idx']}")
+                print(f" D TP+{f(tpd)}  FN+{f(fnd)} FP+{f(fpd)}     ri={ri}, p+={dc.rel['r+'][ri]['p+']['idx']} vtr={dci.volume_tp_rate}")
             add_info(info, D, "r+", ri, tpd, fnd, fpd)
             # Detection}
 
@@ -429,13 +433,13 @@ class MME(MetricABS):
             #     if debug[U]:
             #         print(f"  U fp+{f(fpu)}             Z[p+][{pi}][r+]=={f(fpuc)}")
             #     add_info(info, U, "p+", pi, 0, 0, fpu)
-            dci.fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
-            if dci.fpuc > 0:
-                dci.fpu = dci.fpuc-1
-                m[U][FP] += dci.fpu
-                if debug[U]:
-                    print(f"  U fp+{f(dci.fpu)}      rel[p+][{pi}][r+]=={dci.fpuc}")
-                add_info(info, U, "p+", pi, 0, 0, dci.fpu)
+            # dci.fpuc = len(dc.rel["p+"][pi]["r+"]['idx'])
+            # if dci.fpuc > 0:
+            #     dci.fpu = dci.fpuc-1
+            #     m[U][FP] += dci.fpu
+            #     if debug[U]:
+            #         print(f"  U fp+{f(dci.fpu)}      rel[p+][{pi}][r+]=={dci.fpuc}")
+            #     add_info(info, U, "p+", pi, 0, 0, dci.fpu)
             # Uniformity}
 
         if return_debug:
