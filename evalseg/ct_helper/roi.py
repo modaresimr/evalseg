@@ -11,13 +11,13 @@ def ct_roi(img, keepRatio=True):
         contours = [*contours, *_get_contours(img[:, :, i])]
     bounds = _find_boundaries(img, contours)
     roi = np.array([[bounds[1], bounds[3]], [bounds[0], bounds[2]]])
-    if img.sum() < 100:
+    if (img > 0).sum() < 100:
         roi = np.array([[0, img.shape[1]], [0, img.shape[0]]])
     if keepRatio:
         _extend_roi_to_ratio(img.shape, roi, img.shape[1] / img.shape[0])
     idx = ()
     for i in range(len(roi)):
-        idx += (np.s_[roi[i][0] : roi[i][1] + 1],)
+        idx += (np.s_[roi[i][0]: roi[i][1] + 1],)
     # print(idx)
     return idx
 
@@ -51,7 +51,7 @@ def segment_roi(segments, margin=10, wh_ratio=1, mindim=[50, 50, -1]):
 
     idx = ()
     for i in range(len(roi)):
-        idx += (np.s_[roi[i][0] : roi[i][1] + 1],)
+        idx += (np.s_[roi[i][0]: roi[i][1] + 1],)
     # print(idx)
     return idx
 
