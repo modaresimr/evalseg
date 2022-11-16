@@ -10,26 +10,14 @@ from ..common import Object, parallel_runner
 
 
 class MetricABS(Object):
-    def __init__(self, debug={}):
+    def __init__(self, debug={}, name=None):
+        super().__init__(name)
         self.debug = defaultdict(bool, debug)
         pass
 
     def set_reference(self, reference: np.ndarray, spacing=None, **kwargs):
         self.reference = reference
-        self.spacing = np.array(
-            spacing if not (spacing is None) else [1, 1, 1]
-        )
-        self.helper = self.calculate_info(
-            reference, self.spacing, **kwargs
-        )
-
-    def calculate_info(
-        self,
-        reference: np.ndarray,
-        spacing: np.ndarray = None,
-        **kwargs
-    ):
-        pass
+        self.spacing = np.array(spacing if not (spacing is None) else [1, 1, 1])
 
     # def evaluate_single(
     #     self,
