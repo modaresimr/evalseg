@@ -34,9 +34,10 @@ UI = "UI"
 class MME(MetricABS):
     def __init__(self, debug={}):
         super().__init__(debug)
-        pass
 
-    def calculate_info(self, reference: np.ndarray, spacing: np.ndarray = None, **kwargs,):
+    def set_reference(self, reference: np.ndarray, spacing=None, **kwargs):
+        super().set_reference(reference, spacing, **kwargs)
+        spacing = self.spacing
 
         # pylint: disable=Need type annotation
         refc = reference
@@ -101,7 +102,7 @@ class MME(MetricABS):
             # if self.debug.get('show_precompute', 0):
             #     self.debug_helper(helperc['components'][i])
 
-        return helperc
+        self.helper = helperc
 
     def evaluate(self, test: np.ndarray, return_debug: bool = False, debug_prefix='', normalize_total_duration=True, **kwargs):
         calc_not_exist = False  # tmp
@@ -443,10 +444,11 @@ class MME(MetricABS):
             #         print(f"  U fp+{f(dci.fpu)}      rel[p+][{pi}][r+]=={dci.fpuc}")
             #     add_info(info, U, "p+", pi, 0, 0, dci.fpu)
             # Uniformity}
-
+        dc.resc = resc
+        res = resc["total"]
         if return_debug:
-            return resc, dc
-        return resc
+            return res, dc
+        return res
 
     # def info(self, na):
     #     return {
