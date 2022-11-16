@@ -23,22 +23,23 @@ def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=100
 
         spls = np.array_split(range(len(items)), max_threads)
         chunks = [items[spl[0]: spl[-1] + 1] for spl in spls if len(spl)]
-        pool = NoDaemonPool()(max_cpu, maxtasksperchild=20)
-        # pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)  # TODO: maxchunk
 
-        result = pool.imap(partial(_chunk_run, runner=runner), chunks)
-        try:
-            print(result)
-            for c in chunks:
-                print(c)
-                for i, r in enumerate(result.next()):
-                    yield c[i], r
-        except KeyboardInterrupt:
-            pool.terminate()
-            pool.join()
-            pool.close()
-            print('ddd')
-            raise
+        # pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)  # TODO: maxchunk
+        with NoDaemonPool()(max_cpu, maxtasksperchild=20) as pool:
+            result = pool.imap(partial(_chunk_run, runner=runner), chunks)
+            try:
+                print(result)
+                for c in chunks:
+                    print(c)
+                    for i, r in enumerate(result.next()):
+                        yield c[i], r
+            except KeyboardInterrupt:
+                # pool.terminate()
+                # pool.join()
+                # pool.close()
+                print('ddd')
+                raise
+
     else:
         for item in items:
             res = _chunk_run([item], runner)
