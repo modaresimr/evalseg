@@ -34,13 +34,13 @@ class MultiMetric(MetricABS):
                 ]
 
     def evaluate(self, test: np.ndarray, return_debug=False, parallel=1, **kwargs):
-        res = self.evaluate_multi({'p': test}, return_debug, parallel, kwargs)
+        res = self.evaluate_multi({'p': test}, return_debug, parallel, **kwargs)
         if return_debug:
             return res[0]['p'], res[1]['p'],
         return res['p']
 
     def evaluate_multi(self, test_dic, return_debug=False, parallel=1, **kwargs):
-        items = self.get_items_multi(test_dic, return_debug, kwargs)
+        items = self.get_items_multi(test_dic, return_debug, **kwargs)
         parallel_res = parallel_runner(_evaluate_helper, items, parallel=parallel)
         res = {p: {c: {} for c in self.metrics} for p in test_dic}
         debug_info = {p: {c: {} for c in self.metrics} for p in test_dic}
