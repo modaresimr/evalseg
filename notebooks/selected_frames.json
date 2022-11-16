@@ -25,7 +25,7 @@
     "071.nii": [{ "slice": { "ax": "z", "frame": 56 }, "algs": ["2-DiceCE", "DiceCE", "WCE"] }],
     "075.nii": [{ "slice": { "ax": "z", "frame": 71 }, "algs": ["2-DiceFocal", "SquareDice", "WCE"] }],
     "077.nii": [{ "slice": { "ax": "z", "frame": 35 }, "algs": ["Asym", "SS", "WCE"] }],
-    "087.nii": [{ "slice": { "ax": "z", "frame": 57 }, "algs": ["Focal", "TopK50", "WCE"] }],
+    "087.nii": [{ "slice": { "ax": "z", "frame": 57 }, "algs": ["Focal", "TopK50", "WCE"] }, { "algs": ["Focal", "TopK50", "WCE"] }],
     "166.nii": [{ "slice": { "ax": "y", "frame": 268 }, "algs": ["2-CE", "DiceCE", "WCE"] }]
   },
   "TaskA_Example": {
