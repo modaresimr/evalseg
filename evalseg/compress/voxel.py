@@ -7,6 +7,7 @@ class Voxel(np.ndarray):
             raise Exception("Only 3d is supported")
         return ndarray.view(Voxel)
 
+    
     def __getstate__(self):
         import tempfile
 
