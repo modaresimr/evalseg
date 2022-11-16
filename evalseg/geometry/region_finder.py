@@ -4,7 +4,7 @@ from scipy.ndimage import distance_transform_edt
 from ..common import Cache
 
 
-@Cache.memoize()
+# @Cache.memoize()
 def expand_labels(label_image, spacing=None):
     """Expand labels in label image by ``distance`` pixels without overlapping.
 

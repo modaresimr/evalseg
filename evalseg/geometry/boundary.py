@@ -10,7 +10,7 @@ from ..common import Cache
 from .roi import one_roi
 
 
-@Cache.memoize()
+# @Cache.memoize()
 def find_binary_boundary(binary_img, mode="thick"):
     """Return bool array where boundaries between labeled regions are True.
     Parameters

@@ -22,9 +22,7 @@ def distance(img, spacing=None, mode="in", mask=None, ignore_distance_rate=1):
     else:
         trimed_idx = one_roi(
             img,
-            margin=(np.array(img.shape) * ignore_distance_rate + 4).astype(
-                int
-            ),
+            margin=(np.array(img.shape) * ignore_distance_rate + 4).astype(int),
             return_index=True,
         )
 
