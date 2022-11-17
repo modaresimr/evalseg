@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 
 
 def _chunk_run(chunks, runner):
-    print(chunks)
+    # print(chunks)
     res = [runner(**c) if type(c) == dict else runner(c)
            for c in chunks]
     return res
@@ -28,16 +28,16 @@ def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=100
         with NoDaemonPool()(max_cpu, maxtasksperchild=20) as pool:
             result = pool.imap(partial(_chunk_run, runner=runner), chunks)
             try:
-                print(result)
+                # print(result)
                 for c in chunks:
-                    print(c)
+                    # print(c)
                     for i, r in enumerate(result.next()):
                         yield c[i], r
             except KeyboardInterrupt:
                 # pool.terminate()
                 # pool.join()
                 # pool.close()
-                print('ddd')
+                print('Error')
                 raise
 
     else:

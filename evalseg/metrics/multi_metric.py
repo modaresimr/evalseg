@@ -10,14 +10,14 @@ class MultiMetric(MetricABS):
     def __init__(self, metrics_dic, debug={}):
         super().__init__(debug)
 
-        self.metrics_dic = metrics_dic
+        self.metrics = metrics_dic
         pass
 
     def set_reference(self, reference: np.ndarray, spacing=None, **kwargs):
         super().set_reference(reference, spacing, **kwargs)
         reference = decompress_arr(reference)
-        for m in self.metrics_dic:
-            self.metrics_dic[m].set_reference(reference, spacing, **kwargs)
+        for m in self.metrics:
+            self.metrics[m].set_reference(reference, spacing, **kwargs)
 
     # def get_items_single(self, test, return_debug, **kwargs):
     #     # items = [{'metric': self.metrics[c], 'data': test, 'p':'p',

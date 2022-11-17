@@ -10,7 +10,7 @@ def plot_metric(ev, name=None, dst=None, show=True):
     num_classes = len(ev)
     dic = {}
     for c in ev:
-        df = metrics.calculate_prc_tpr_f1_multi(ev[c]["total"])
+        df = metrics.calculate_prc_tpr_f1_multi(ev[c])
         dic[f"class {c}"] = df[["tpr", "prc"]]
         dic[f"class {c}"].columns = ['TPR', 'PRC']
         # ui.spider_chart(df[['prc', 'tpr']], np.arange(0, 1, .2), title=name, ax=axes[i])
@@ -29,7 +29,7 @@ def plot_metric_multi(ev_dic, name=None, dst=None, show=True, col=5, show_table=
     for k in ev_dic:
         ev = ev_dic[k]
         for c in ev:
-            df = metrics.traditional.calculate_prc_tpr_f1_multi(ev[c]["total"])
+            df = metrics.traditional.calculate_prc_tpr_f1_multi(ev[c])
 
             dic_of_cls[c][k] = df[["tpr", "prc"]]
             dic_of_cls[c][k].columns = ['TPR', 'PRC']
