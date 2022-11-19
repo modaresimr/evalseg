@@ -1,8 +1,12 @@
+import numpy as np
 import json
 import os
 import zipfile
 import gzip
 from .. import common
+from . import MultiClassSegment
+from .nib import read_nib
+import pickle
 GT = "GroundTruth"
 CT = "CT"
 PREDS = "Predictions"
@@ -46,7 +50,11 @@ class Dataset:
         if path == None:
             print(f"can not load {typ} {case}")
             return None, None
-        return self.read_file(path)
+        data = self.read_file(path)
+        # if typ != CT and type(data) == tuple and type(data[0]) == np.ndarray:
+        #     data_arr, voxelsize = data
+        #     return MultiClassSegment(data_arr, voxelsize), voxelsize
+        return data
 
     def read_file(self, path):
         return get_file(path)
@@ -147,14 +155,26 @@ def get_file(path: str):
     try:
         if "#" in path:
             zname, zpath = path.split("#")
+            ext = os.path.splitext(zpath)[1]
             with zipfile.ZipFile(zname, "r") as archive:
-                return archive.read(zpath)
-        if path.endswith('.gz'):
+                return open_data(archive.read(zpath), ext)
+        ext = os.path.splitext(path)[1]
+        if ext.endswith('.gz'):
             with gzip.open(path) as f:
-                return f.read()
+                return open_data(f.read(), ext.replace('.gz', ''))
         else:
             with open(path, "rb") as f:
-                return f.read()
+                return open_data(f.read(), ext)
     except Exception as e:
         print(f"can not load {path}: {e}")
+        raise
         return None
+
+
+def open_data(data, typ):
+    if 'nii' in typ:
+        return read_nib(data)
+    if 'pkl' in typ:
+        return pickle.loads(data)
+
+    raise Exception('unsupported data type')

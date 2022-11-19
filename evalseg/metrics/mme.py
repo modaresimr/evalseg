@@ -10,6 +10,7 @@ from typing_extensions import Literal
 
 from .. import common, geometry, ui
 from ..common import Cache
+from ..io import Segment
 from ..compress import compress_arr, decompress_arr
 from . import MetricABS
 
@@ -35,13 +36,15 @@ class MME(MetricABS):
     def __init__(self, debug={}):
         super().__init__(debug)
 
-    def set_reference(self, reference: np.ndarray, spacing=None, **kwargs):
+    def set_reference(self, reference: Segment, spacing=None, **kwargs):
+        # def set_reference(self, reference: np.ndarray, spacing=None, **kwargs):
         super().set_reference(reference, spacing, **kwargs)
         spacing = self.spacing
 
         # pylint: disable=Need type annotation
         refc = reference
-        gt_labels, gN = cc3d.connected_components(refc, return_N=True)
+
+        gt_labels, gN = geometry.connected_components(refc, return_N=True)
         gt_labels = gt_labels.astype(np.uint8)
         helperc = {}
         helperc["voxel_volume"] = spacing[0] * spacing[1] * spacing[2]
@@ -76,14 +79,7 @@ class MME(MetricABS):
             normalize_dst_outside = np.maximum(0, (out_dst) / deminutor)
             # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
             normalize_dst = normalize_dst_inside + normalize_dst_outside
-            # idx = (119, 325)
-            # tmp = {'skeleton_dst': skeleton_dst,
-            #        'in_dst': in_dst, 'out_dst': out_dst, 'skel_dst': skel_dst,
-            #        'normalize_dst_inside': normalize_dst_inside,
-            #        'normalize_dst_outside': normalize_dst_outside,
-            #        'normalize_dst': normalize_dst,
-            #        }
-            # print({k: tmp[k][idx] for k in tmp})
+
             helperc["components"][i] = compress_arr({
                 "gt": gt_component,
                 "gt_region": gt_region,
@@ -98,9 +94,6 @@ class MME(MetricABS):
                 "skgt_normalized_dst_in": normalize_dst_inside,
                 "skgt_normalized_dst_out": normalize_dst_outside,
             })
-
-            # if self.debug.get('show_precompute', 0):
-            #     self.debug_helper(helperc['components'][i])
 
         self.helper = helperc
 
@@ -123,7 +116,7 @@ class MME(MetricABS):
         resc = {"total": {}, "components": {}}
 
         dc.gt_labels, dc.gN = dc.helperc["gt_labels"], dc.helperc["gN"]
-        dc.pred_labels, dc.pN = cc3d.connected_components(dc.testc, return_N=True)
+        dc.pred_labels, dc.pN = geometry.connected_components(dc.testc, return_N=True)
 
         # extend gt_regions for not included components in prediction {
         dc.gt_regions = dc.helperc["gt_regions"]
@@ -155,7 +148,9 @@ class MME(MetricABS):
 
             if debug[UI] and is2d:
                 ui_regions = dc.gt_regions.copy()
-                ndst = hci["skgt_normalized_dst"].copy()
+                ndst_in = hci["skgt_normalized_dst_in"].copy()
+                ndst_out = hci["skgt_normalized_dst_out"].copy()
+                ndst = ndst_in+ndst_out
                 ndst[ndst > 1] = 1
                 # ndst[ndst > 2] = 0
                 ndst[hci["gt_border"]] = 1

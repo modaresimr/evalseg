@@ -7,14 +7,17 @@ from tqdm.auto import tqdm
 
 def _chunk_run(chunks, runner):
     # print(chunks)
-    res = [runner(**c) if type(c) == dict else runner(c)
-           for c in chunks]
+    res = [runner(**c) if type(c) == dict else runner(c) for c in chunks]
     return res
 
 
 def parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=1000000, silent=False):
     generetor = _parallel_runner(runner, items, max_cpu=max_cpu, parallel=parallel, max_threads=max_threads,)
-    return tqdm(generetor, total=len(items), disable=silent)
+    pbar = tqdm(generetor, total=len(items), disable=silent)
+    return pbar
+    # for i, x in pbar:
+    #     pbar.set_postfix(f'{i}'[0:100])
+    #     yield i, x
 
 
 def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=1000000):

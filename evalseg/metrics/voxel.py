@@ -10,9 +10,9 @@ class Voxel(MetricABS):
     def evaluate(self, test: np.ndarray, **kwargs):
         is2d = (test.ndim == 2 or test.shape[2] == 1)
 
-        tp = self.reference & test
-        fn = self.reference & (~test)
-        fp = (~self.reference) & test
-        tn = (~self.reference) & (~test)
+        tp = (self.reference & test).sum()
+        fn = (self.reference & (~test)).sum()
+        fp = ((~self.reference) & test).sum()
+        tn = ((~self.reference) & (~test)).sum()
 
         return {'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn}

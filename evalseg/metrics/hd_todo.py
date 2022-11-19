@@ -31,7 +31,7 @@ class HD(MetricABS):
 
         refc = reference
 
-        gt_labels, gN = cc3d.connected_components(refc, return_N=True)
+        gt_labels, gN = geometry.connected_components(refc, return_N=True)
         gt_labels = gt_labels.astype(np.uint8)
 
         helperc["gt_labels"] = gt_labels
@@ -86,7 +86,7 @@ class HD(MetricABS):
         resc = {"total": {}, "components": {}}
 
         dc.gt_labels, dc.gN = dc.helperc["gt_labels"], dc.helperc["gN"]
-        dc.pred_labels, dc.pN = cc3d.connected_components(dc.testc, return_N=True)
+        dc.pred_labels, dc.pN = geometry.connected_components(dc.testc, return_N=True)
 
         # extend gt_regions for not included components in prediction
         dc.gt_regions = dc.helperc["gt_regions"]
@@ -127,14 +127,13 @@ class HD(MetricABS):
             # dci.dst_border_gt2pred_v[dci.border_pred] = hci['gt_dst'][dci.border_pred]
 
             if len(dci.dst_border_gt2pred) == 0:
-                dci.gt_hd=np.nan
-                dci.gt_hd_avg=np.nan
-                dci.gt_hd95=np.nan
+                dci.gt_hd = np.nan
+                dci.gt_hd_avg = np.nan
+                dci.gt_hd95 = np.nan
             else:
                 dci.gt_hd = dci.dst_border_gt2pred_abs.max()
-                dci.gt_hd_avg =  dci.dst_border_gt2pred_abs.mean()
+                dci.gt_hd_avg = dci.dst_border_gt2pred_abs.mean()
                 dci.gt_hd95 = np.quantile(dci.dst_border_gt2pred_abs, 0.95)
-            
 
             dci.pred_border_dst = geometry.distance(
                 dci.component_pred,
@@ -146,10 +145,10 @@ class HD(MetricABS):
             dci.dst_border_pred2gt = dci.pred_border_dst[dci.border_gt]
             dci.dst_border_pred2gt_abs = np.abs(dci.dst_border_pred2gt)
 
-            if len(dci.dst_border_pred2gt)==0:
-                
-            # dci.dst_border_pred2gt_v = np.zeros(dci.border_pred.shape)
-            # dci.dst_border_pred2gt_v[dci.border_gt] = dci.pred_border_dst[dci.border_gt]
+            if len(dci.dst_border_pred2gt) == 0:
+
+                # dci.dst_border_pred2gt_v = np.zeros(dci.border_pred.shape)
+                # dci.dst_border_pred2gt_v[dci.border_gt] = dci.pred_border_dst[dci.border_gt]
             valid = (
                 len(dci.dst_border_pred2gt)
                 and np.inf not in dci.dst_border_pred2gt

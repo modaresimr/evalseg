@@ -46,9 +46,9 @@ class MultiMetric(MetricABS):
         debug_info = {p: {c: {} for c in self.metrics} for p in test_dic}
         for k, v in parallel_res:
             if return_debug:
-                res[k['p']][k['label']], debug_info[k['p']][k['label']] = v
+                res[k['p']][k['metric_label']], debug_info[k['p']][k['metric_label']] = v
             else:
-                res[k['p']][k['label']] = v
+                res[k['p']][k['metric_label']] = v
 
         if return_debug:
             return res, debug_info

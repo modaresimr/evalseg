@@ -32,7 +32,9 @@ def distance(img, spacing=None, mode="in", mask=None, ignore_distance_rate=1):
     modes = ["in", "out"] if mode == "both" else [mode]
 
     dst = np.zeros(orig_img.shape, np.float16)
+    print('shape', img.shape, dst.shape)
     if "out" in modes:
+
         dst[trimed_idx] = edt.edt(~img, anisotropy=spacing, black_border=False)
     if "in" in modes:
         trimed_idx = one_roi(img, margin=4, return_index=True)
