@@ -150,8 +150,8 @@ class MME(MetricABS):
         self.helper = helperc
 
     def evaluate(self, test: SegmentArray, return_debug: bool = False, debug_prefix='', normalize_total_duration=True, **kwargs):
-        assert isinstance(reference, SegmentArray)
-        assert reference.dtype == bool
+        assert isinstance(test, SegmentArray)
+        assert test.dtype == bool
         calc_not_exist = False  # tmp
         reference = self.reference
         debug = self.debug
