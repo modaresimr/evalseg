@@ -156,7 +156,7 @@ class MME(MetricABS):
         reference = self.reference
         debug = self.debug
         assert (test.shape == reference.shape), "reference and test are not match"
-        is2d = (test.ndim == 2 or test.shape[2] == 1)
+        is2d = (len(test.shape) == 2 or test.shape[2] == 1)
         alpha1 = 0.001
         alpha2 = 1
         m_def = {d: {TP: 0, FP: 0, FN: 0, TN: 0} for d in [D, B, U, R, T]}

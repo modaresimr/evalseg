@@ -16,7 +16,6 @@ class HD(MetricABS):
         self.gt_border = SegmentArray(geometry.find_binary_boundary(dense, mode="inner"))
 
     def evaluate(self, test: SegmentArray, **kwargs):
-        is2d = (len(test.shape) == 2 or test.shape[2] == 1)
 
         densepr = test.todense()
         pr_dst = np.abs(geometry.distance(densepr, spacing=test.voxelsize, mode="both"))
