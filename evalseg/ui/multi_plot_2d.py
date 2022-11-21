@@ -169,7 +169,7 @@ epsilon = 0.00001
 
 def _get_common_region(dict_of_images):
     data = np.array(list(dict_of_images.values()))
-    idx = geometry.one_roi(data, ignore=[0], threshold=10, return_index=True)
+    idx = geometry.one_roi(data, ignore=[0], return_index=True)
     return idx[1:4]
 
 

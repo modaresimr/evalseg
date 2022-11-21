@@ -145,14 +145,11 @@ class HD(MetricABS):
             dci.dst_border_pred2gt = dci.pred_border_dst[dci.border_gt]
             dci.dst_border_pred2gt_abs = np.abs(dci.dst_border_pred2gt)
 
-            if len(dci.dst_border_pred2gt) == 0:
+            # if len(dci.dst_border_pred2gt) == 0:
 
-                # dci.dst_border_pred2gt_v = np.zeros(dci.border_pred.shape)
-                # dci.dst_border_pred2gt_v[dci.border_gt] = dci.pred_border_dst[dci.border_gt]
-            valid = (
-                len(dci.dst_border_pred2gt)
-                and np.inf not in dci.dst_border_pred2gt
-            )
+            # dci.dst_border_pred2gt_v = np.zeros(dci.border_pred.shape)
+            # dci.dst_border_pred2gt_v[dci.border_gt] = dci.pred_border_dst[dci.border_gt]
+            valid = len(dci.dst_border_pred2gt) and np.inf not in dci.dst_border_pred2gt
 
             dci.pred_hd = (
                 dci.dst_border_pred2gt_abs.max() if valid else np.nan

@@ -5,16 +5,16 @@ from enum import Enum
 
 import cc3d
 import numpy as np
-
+import gc
 from typing_extensions import Literal
 
 from .. import common, geometry, ui
 from ..common import Cache
-from ..io import Segment
+from ..io import SegmentArray
 from ..compress import compress_arr, decompress_arr
 from . import MetricABS
 
-epsilon = 0.0001
+epsilon = 0.001
 
 TP = "tp"
 FP = "fp"
@@ -35,69 +35,121 @@ UI = "UI"
 class MME(MetricABS):
     def __init__(self, debug={}):
         super().__init__(debug)
+        self.optimize_memory = True
 
-    def set_reference(self, reference: Segment, spacing=None, **kwargs):
+    def _calc_component_info(self, component: SegmentArray, cid):
+        print('cid=', cid)
+        # return {}
+        spacing = component.voxelsize
+        gt_component = component.todense()
+        gt_border = geometry.find_binary_boundary(gt_component, mode="thick")
+        gt_no_border = gt_component & ~gt_border
+        gt_with_border = gt_component | gt_border
+        gt_border_seg = SegmentArray(gt_border)
+        in_dst = geometry.distance(gt_no_border, spacing=spacing, mode="in", mask_roi=gt_border_seg.roi)
+        safe_roi = geometry.calc_safe_roi(gt_border_seg.shape, gt_border_seg.roi, roi_rate=3)
+        out_dst = geometry.distance(gt_with_border, spacing=spacing, mask_roi=safe_roi, mode="out")
+
+        if self.optimize_memory:
+            del gt_with_border
+            del gt_no_border
+            del gt_border
+
+        # gt_dst = out_dst + in_dst
+
+        skeleton = (geometry.skeletonize(gt_component, spacing=spacing) > 0)
+        if self.optimize_memory:
+            del gt_component
+            gc.collect()
+        skeleton_dst = geometry.distance(skeleton, spacing=spacing, mask_roi=safe_roi, mode="out")
+        # skeleton_dst[out_dst>skeleton_dst]=out_dst[out_dst>skeleton_dst]# this is an approximation so to avoid negative weights
+        skeleton = SegmentArray(skeleton, mask_roi=gt_border_seg.roi)
+
+        deminutor = skeleton_dst + in_dst
+        deminutor[np.abs(deminutor) < 1] = 1
+        normalize_dst_inside = in_dst / deminutor
+        normalize_dst_inside_seg = SegmentArray(normalize_dst_inside, mask_roi=gt_border_seg.roi)
+
+        if self.optimize_memory:
+            del deminutor
+            del in_dst
+            del normalize_dst_inside
+            gc.collect()
+
+        deminutor = skeleton_dst - out_dst
+        deminutor[np.abs(deminutor) < 1] = 1
+        normalize_dst_outside = out_dst / deminutor
+        normalize_dst_outside_seg = SegmentArray(np.clip(normalize_dst_outside, 0, 5), fill_value=5, mask_roi=safe_roi)
+        if self.optimize_memory:
+            del deminutor
+            del out_dst
+            del skeleton_dst
+            del normalize_dst_outside
+            gc.collect()
+
+        # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
+        #
+
+        res = {
+            "gt_border": gt_border_seg,  # for visu
+            "gt_skeleton": skeleton,  # for visu
+            "skgt_normalized_dst_in": normalize_dst_inside_seg,
+            "skgt_normalized_dst_out": normalize_dst_outside_seg,
+        }
+
+        if not self.optimize_memory:
+            res['gt'] = SegmentArray(gt_component)
+            # res['gt_region'] = SegmentArray(gt_regions == i)
+            skel_dst = skeleton_dst - out_dst + in_dst
+            res["skel_dst"] = SegmentArray(skel_dst, fill_value=skel_dst.max())
+            res["gt_skeleton_dst"] = SegmentArray(skeleton_dst, fill_value=skeleton_dst.max())
+
+            res["gt_out_dst"] = SegmentArray(out_dst, fill_value=out_dst.max())
+            res["gt_in_dst"] = SegmentArray(in_dst)
+            gt_dst = in_dst+out_dst
+            res["gt_dst"] = SegmentArray(gt_dst, fill_value=gt_dst.max())
+            normalize_dst = normalize_dst_inside_seg + normalize_dst_outside_seg
+            res["skgt_normalized_dst"] = SegmentArray(normalize_dst, fill_value=normalize_dst.max())
+        return res
+
+    def set_reference(self, reference: SegmentArray, **kwargs):
         # def set_reference(self, reference: np.ndarray, spacing=None, **kwargs):
-        super().set_reference(reference, spacing, **kwargs)
-        spacing = self.spacing
+        super().set_reference(reference, **kwargs)
+        if hasattr(self, 'helper'):
+            del self.helper
+        assert isinstance(reference, SegmentArray)
+        assert reference.dtype == bool
+
+        spacing = self.reference.voxelsize
 
         # pylint: disable=Need type annotation
-        refc = reference
 
-        gt_labels, gN = geometry.connected_components(refc, return_N=True)
-        gt_labels = gt_labels.astype(np.uint8)
+        gt_labels, gN = get_components_from_segment(reference)
+        # refc = reference.todense()
+        # gt_labels, gN =geometry.connected_components(refc, return_N=True)
+        # gt_labels = gt_labels.astype(np.uint8)
+
         helperc = {}
         helperc["voxel_volume"] = spacing[0] * spacing[1] * spacing[2]
-        helperc["gt_labels"] = gt_labels
+        # helperc["gt_labels"] = SegmentArray(gt_labels)
         helperc["gN"] = gN
 
-        gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
-        helperc["gt_regions"] = gt_regions
-        helperc["components"] = {}
-        helperc["total_gt_volume"] = 0
-        for i in range(1, gN + 1):
-            gt_component = gt_labels == i
-            gt_region = gt_regions == i
-            gt_border = geometry.find_binary_boundary(gt_component, mode="thick")
-            gt_no_border = gt_component & ~gt_border
-            gt_with_border = gt_component | gt_border
-            in_dst = geometry.distance(gt_no_border, spacing=spacing, mode="in")
-            out_dst = geometry.distance(gt_with_border, spacing=spacing, mode="out")
-            gt_dst = out_dst + in_dst
-            helperc["total_gt_volume"] += gt_component.sum() * helperc["voxel_volume"]
+        # gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
+        # helperc["gt_regions"] = gt_regions
 
-            skeleton = (geometry.skeletonize(gt_component, spacing=spacing) > 0)
-            skeleton_dst = geometry.distance(skeleton, spacing=spacing, mode="out")
-            # skeleton_dst[out_dst>skeleton_dst]=out_dst[out_dst>skeleton_dst]# this is an approximation so to avoid negative weights
+        helperc["total_gt_volume"] = reference.sum()*helperc["voxel_volume"]
 
-            normalize_dst_inside = in_dst / (skeleton_dst + in_dst + epsilon)
+        items = [{'cid': i, 'component': SegmentArray(gt_labels == i, spacing)} for i in range(1, gN + 1)]
+        # items = [{'cid': i, 'component': None} for i in range(1, gN + 1)]
+        res = common.parallel_runner(self._calc_component_info, items, parallel=1, max_cpu=1, maxtasksperchild=1)
+        # res = common.parallel_runner(self.__calc_component_info, items, parallel=0, max_cpu=1, maxtasksperchild=1)
 
-            skel_dst = skeleton_dst - out_dst + in_dst
-
-            deminutor = skeleton_dst - out_dst
-            deminutor[np.abs(deminutor) < epsilon] = epsilon
-            normalize_dst_outside = np.maximum(0, (out_dst) / deminutor)
-            # normalize_dst_outside = normalize_dst_outside.clip(0, normalize_dst_outside.max())
-            normalize_dst = normalize_dst_inside + normalize_dst_outside
-
-            helperc["components"][i] = compress_arr({
-                "gt": gt_component,
-                "gt_region": gt_region,
-                "gt_border": gt_border,
-                "skel_dst": skel_dst,
-                "gt_dst": gt_dst,
-                "gt_out_dst": out_dst,
-                "gt_in_dst": in_dst,
-                "gt_skeleton": skeleton,
-                "gt_skeleton_dst": skeleton_dst,
-                "skgt_normalized_dst": normalize_dst,
-                "skgt_normalized_dst_in": normalize_dst_inside,
-                "skgt_normalized_dst_out": normalize_dst_outside,
-            })
-
+        helperc["components"] = {k['cid']: v for k, v in res}
         self.helper = helperc
 
-    def evaluate(self, test: np.ndarray, return_debug: bool = False, debug_prefix='', normalize_total_duration=True, **kwargs):
+    def evaluate(self, test: SegmentArray, return_debug: bool = False, debug_prefix='', normalize_total_duration=True, **kwargs):
+        assert isinstance(reference, SegmentArray)
+        assert reference.dtype == bool
         calc_not_exist = False  # tmp
         reference = self.reference
         debug = self.debug
@@ -110,13 +162,19 @@ class MME(MetricABS):
         dc = common.Object()
         info = {k: {} for k in m_def}
 
-        dc.testc = test
+        dc.testc = test.todense()
         dc.helperc = self.helper
 
         resc = {"total": {}, "components": {}}
 
-        dc.gt_labels, dc.gN = dc.helperc["gt_labels"], dc.helperc["gN"]
-        dc.pred_labels, dc.pN = geometry.connected_components(dc.testc, return_N=True)
+        dc.gt_labels, dc.gN = dc.helperc["gt_labels"].todense(), dc.helperc["gN"]
+
+        # dc.gt_labels = dc.helperc["gt_labels"].segments
+        # dc.gN = len(dc.helperc["gt_labels"].segments)
+
+        # dc.pred_labels, dc.pN = geometry.connected_components(dc.testc, return_N=True)
+        dc.pred_labels, dc.pN = get_components_from_segment(test),
+        # dc.pN = len(dc.testc.segments)
 
         # extend gt_regions for not included components in prediction {
         dc.gt_regions = dc.helperc["gt_regions"]
@@ -135,7 +193,7 @@ class MME(MetricABS):
         dc.total_gt_volume = max(dc.helperc["total_gt_volume"], dc.helperc["voxel_volume"]) if normalize_total_duration else 1
         for ri in range(1, dc.gN + 1):
             dc.gts[ri] = dci = common.Object()
-            hci = decompress_arr(dc.helperc["components"][ri])
+            hci = dc.helperc["components"][ri]
 
             dci.component_gt = dc.rel["r+"][ri]["comp"]
 
@@ -148,12 +206,12 @@ class MME(MetricABS):
 
             if debug[UI] and is2d:
                 ui_regions = dc.gt_regions.copy()
-                ndst_in = hci["skgt_normalized_dst_in"].copy()
-                ndst_out = hci["skgt_normalized_dst_out"].copy()
+                ndst_in = hci["skgt_normalized_dst_in"].todense()
+                ndst_out = hci["skgt_normalized_dst_out"].todense()
                 ndst = ndst_in+ndst_out
                 ndst[ndst > 1] = 1
                 # ndst[ndst > 2] = 0
-                ndst[hci["gt_border"]] = 1
+                ndst[hci["gt_border"].todense()] = 1
 
                 ui_regions[ndst == 0] = 0
                 ui.multi_plot_2d(
@@ -247,9 +305,9 @@ class MME(MetricABS):
             # Relative Volume}
 
             # Boundary================================{
-                dci.gt_skel = hci["gt_skeleton"]
-                dci.skgtn_dst_in = hci["skgt_normalized_dst_in"]
-                dci.skgtn_dst_out = hci["skgt_normalized_dst_out"]
+                dci.gt_skel = hci["gt_skeleton"].todense()
+                dci.skgtn_dst_in = hci["skgt_normalized_dst_in"].todense()
+                dci.skgtn_dst_out = hci["skgt_normalized_dst_out"].todense()
 
                 dci.boundary_tpc = dci.skgtn_dst_in[dci.tp_comp]
                 dci.boundary_fnc = dci.skgtn_dst_in[dci.fn_comp]
@@ -575,3 +633,9 @@ def add_info(info, property, p_or_r, indx, tp, fn, fp):
     info[property][p_or_r][indx]["tp"] += tp
     info[property][p_or_r][indx]["fp"] += fp
     info[property][p_or_r][indx]["fn"] += fn
+
+
+def get_components_from_segment(segment: SegmentArray):
+    res = np.zeros(segment.shape, np.uint8)
+    res[segment.roi], n = geometry.connected_components(segment[segment.roi], return_N=True)
+    return res, n
