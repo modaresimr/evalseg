@@ -131,11 +131,11 @@ class MME(MetricABS):
 
         helperc = {}
         helperc["voxel_volume"] = spacing[0] * spacing[1] * spacing[2]
-        # helperc["gt_labels"] = SegmentArray(gt_labels)
+        helperc["gt_labels"] = SegmentArray(gt_labels)
         helperc["gN"] = gN
 
-        # gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
-        # helperc["gt_regions"] = gt_regions
+        gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
+        helperc["gt_regions"] = gt_regions
 
         helperc["total_gt_volume"] = reference.sum()*helperc["voxel_volume"]
 
