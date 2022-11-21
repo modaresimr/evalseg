@@ -8,5 +8,5 @@ from . import common, compress, ct_helper, geometry, io, metrics, ui, ui3d
 
 def reload():
     for module in list(sys.modules.values()):
-        if "evalseg." in f"{module}":
+        if "evalseg." in f"{module}" and 'segment_array' not in f"{module}":
             importlib.reload(module)
