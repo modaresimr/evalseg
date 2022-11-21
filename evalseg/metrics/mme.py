@@ -175,7 +175,7 @@ class MME(MetricABS):
         # dc.gN = len(dc.helperc["gt_labels"].segments)
 
         # dc.pred_labels, dc.pN = geometry.connected_components(dc.testc, return_N=True)
-        dc.pred_labels, dc.pN = get_components_from_segment(test),
+        dc.pred_labels, dc.pN = get_components_from_segment(test)
         # dc.pN = len(dc.testc.segments)
 
         # extend gt_regions for not included components in prediction {
