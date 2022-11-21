@@ -2,7 +2,7 @@ import copy
 import hashlib
 from collections import defaultdict
 from enum import Enum
-
+import psutil
 import cc3d
 import numpy as np
 import gc
@@ -141,7 +141,9 @@ class MME(MetricABS):
 
         items = [{'cid': i, 'component': SegmentArray(gt_labels == i, spacing)} for i in range(1, gN + 1)]
         # items = [{'cid': i, 'component': None} for i in range(1, gN + 1)]
-        res = common.parallel_runner(self._calc_component_info, items, parallel=1, max_cpu=1, maxtasksperchild=1)
+
+        maxcpu = psutil.virtual_memory().available//(30 * 1024 * 1024 * 1024)+1
+        res = common.parallel_runner(self._calc_component_info, items, parallel=1, max_cpu=maxcpu, maxtasksperchild=1)
         # res = common.parallel_runner(self.__calc_component_info, items, parallel=0, max_cpu=1, maxtasksperchild=1)
 
         helperc["components"] = {k['cid']: v for k, v in res}
