@@ -185,7 +185,7 @@ class MME(MetricABS):
         dc.rel_gt_regions = np.zeros_like(dc.gt_regions)
 
         dc.rel_gt_regions[dc.gt_region_mask] = dc.gt_regions[dc.gt_region_mask]
-        dc.gt_regions = geometry.expand_labels(dc.rel_gt_regions, spacing=self.spacing).astype(np.uint8)
+        dc.gt_regions = geometry.expand_labels(dc.rel_gt_regions, spacing=reference.voxelsize).astype(np.uint8)
         # }
         dc.rel = _get_rel_gt_pred(dc.gt_labels, dc.gN, dc.pred_labels, dc.pN, dc.gt_regions)
         # print('rel', dc.rel)
