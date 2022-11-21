@@ -1,103 +1,66 @@
 import numpy as np
-from .. import common, geometry, ui
+from .. import common, geometry
 import cc3d
 
 import memory_profiler
 
 
-# @memory_profiler.profile
-class MultiClassSegment:
-    def __init__(self, dense_array: np.ndarray, voxelsize=None):
-        self.voxelsize = voxelsize
-        # assert arr.dtype == np.uint8, f'type is {arr.dtype} but uint8 as expected'
-        dense_array = dense_array.astype(np.uint8)
-        self.shape = dense_array.shape
-        self.dtype = dense_array.dtype
+# class Segment:
+#     def __init__(self, shape, dtype, voxelsize=None, fill_value=0):
+#         if type(self) == Segment:  # do not call directly
+#             raise Exception('Call MultiClassSegment, MultiPartSegment or SingleSegment')
+#         self.dtype = dtype
+#         self.shape = shape
+#         self.voxelsize = np.array(voxelsize if not (voxelsize is None) else [1, 1, 1])
+#         self.roi = np.s_[0:0, 0:0, 0:0]
+#         self.fill_value = fill_value
 
-        self.segments = {}
-        self.default_segment = SingleSegment(dtype=self.dtype, shape=dense_array.shape)
-        self.roi = geometry.one_roi(dense_array, return_index=True)
-        dense_array = dense_array[self.roi]
-        if dense_array.shape[0] == 0:
-            return
-        spoint_new = [self.roi[i].start for i in range(dense_array.ndim)]
-        for c in range(1, dense_array.max()+1):
-            self.segments[c] = Segment(dense_array == c, voxelsize=voxelsize,
-                                       shape=self.shape, dtype=self.dtype, spoint=spoint_new)
+#     def todense(self):
+#         pass
 
-        import gc
-        gc.collect()
-
-    def todense(self):
-        return self[tuple([np.s_[:] for i in range(len(self.shape))])]
-        # dense = np.zeros(self.shape, self.dtype)
-        # for c in self.segments:
-        #     dense[self.segments[c].roi] += self.segments[c].todense()[self.segments[c].roi]
-        # return dense
-
-    def __getitem__(self, index):
-        res = self.default_segment[index]
-        for c in self.segments:
-            res += (self.segments[c][index]*c).astype(self.dtype)
-        return res
-
-    def __repr__(self):
-        return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-\nsegments={self.segments!r}'
-
-    def __str__(self):
-        return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-segments={len(self.segments)}'
+#     def __getitem__(self, index):
+#         pass
 
 
-class Segment:
-    def __init__(self, dense_array: np.ndarray, voxelsize=None, dtype=None, shape=None, spoint=None):
-        assert (dense_array is None and shape is not None) or (dense_array is not None and (
-            (shape is None and spoint is None) or (shape is not None and spoint is not None)))
+# class MultiPartSegment(Segment):
+#     def __init__(self, dense_array: np.ndarray, voxelsize=None, dtype=None, shape=None, spoint=None, fill_value=0):
+#         super().__init__(shape=shape if shape else dense_array.shape,
+#                          dtype=dtype if dtype else dense_array.dtype,
+#                          voxelsize=voxelsize)
+#         assert dense_array is not None
+#         assert (shape is None and spoint is None) or (shape is not None and spoint is not None)
 
-        self.dtype = dtype if dtype else dense_array.dtype
-        self.shape = shape if shape else dense_array.shape
-        self.voxelsize = voxelsize
+#         tmp_roi = geometry.one_roi(dense_array, return_index=True)
+#         dense_array = dense_array[tmp_roi]
+#         self.roi = add_spoint2roi(tmp_roi, spoint)
+#         spoint_new = get_spoint(self.roi)
 
-        self.default_segment = SingleSegment(dtype=self.dtype, shape=self.shape)
+#         labels, seg_count = geometry.connected_components(dense_array != 0, return_N=True)
+#         # labels, seg_count = dense_array, 10
+#         self.segments = []
+#         for l in range(1, seg_count+1):
+#             self.segments.append(SingleSegment(labels == l, shape=self.shape, spoint=spoint_new))
 
-        if dense_array is None:
-            self.roi = np.s_[0:0, 0:0, 0:0]
-            return
+#     def todense(self):
+#         return self[tuple([np.s_[:] for i in range(len(self.shape))])]
 
-        tmp_roi = geometry.one_roi(dense_array, return_index=True)
-        dense_array = dense_array[tmp_roi]
-        self.roi = add_spoint2roi(tmp_roi, spoint)
-        spoint_new = get_spoint(self.roi)
+#     def __getitem__(self, index):
+#         res = get_default_array_from_roi(index, self.shape, self.dtype, self.fill_value)
 
-        labels, seg_count = geometry.connected_components(dense_array != 0, return_N=True)
-        # labels, seg_count = dense_array, 10
-        self.segments = []
-        for l in range(1, seg_count+1):
-            self.segments.append(SingleSegment(labels == l, shape=self.shape, spoint=spoint_new))
+#         for s in self.segments:
+#             if self.dtype == bool:
 
-    def todense(self):
-        return self[tuple([np.s_[:] for i in range(len(self.shape))])]
-        # dense = np.zeros(self.shape, self.dtype)
+#                 res[s[index] != self.fill_value] = ~self.fill_value
+#             else:
+#                 res += s[index]
 
-        # for segment in self.segments:
-        #     dense[segment.roi] += segment.data
-        # return dense
+#         return res
 
-    def __getitem__(self, index):
-        res = self.default_segment[index]
+#     def __repr__(self):
+#         return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-\nsegments={self.segments!r}'
 
-        for s in self.segments:
-            if self.dtype == bool:
-                res |= s[index]
-            else:
-                res += s[index]
-
-        return res
-
-    def __repr__(self):
-        return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-\nsegments={self.segments!r}'
-
-    def __str__(self):
-        return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-segments={len(self.segments)}'
+#     def __str__(self):
+#         return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-segments={len(self.segments)}'
 
 
 def get_spoint(roi):
@@ -126,22 +89,100 @@ def roi_str(roi):
             roistr += (i,)
     return str(roistr)
 
+# @memory_profiler.profile
+
+
+def get_shape_from_roi(index, orig_shape):
+    if type(index) == int:
+        return 0
+    new_shape = ()
+    for i in range(len(index)):
+        if type(index[i]) == int:
+            pass
+        elif type(index[i]) == slice and index[i].step == None:
+            index_s = 0 if index[i].start == None else index[i].start
+            index_e = min(orig_shape[i], orig_shape[i] if index[i].stop == None else index[i].stop)
+            new_shape += (index_e-index_s,)
+        else:
+            print(f'warning! this get item {index} is not supported and cause speed problem')
+            return np.zeros(orig_shape, bool)[index].shape
+
+    return new_shape
+
+
+def get_default_array_from_roi(index, orig_shape, dtype, fill_value=0):
+    if type(index) == int:
+        return 0
+    new_shape = ()
+    ret = ()
+    for i in range(len(index)):
+        if type(index[i]) == int:
+            new_shape += (1,)
+            ret += 0,
+        elif type(index[i]) == slice and index[i].step == None:
+            index_s = 0 if index[i].start == None else index[i].start
+            index_e = min(orig_shape[i], orig_shape[i] if index[i].stop == None else index[i].stop)
+            ret += np.s_[:],
+            new_shape += (index_e-index_s,)
+        else:
+            print(f'warning! this get item {index} is not supported and cause speed problem')
+            return np.zeros(orig_shape, dtype)[index]
+    res = np.zeros(new_shape, dtype)[ret]
+    if fill_value:
+        res[:] = fill_value
+    return res
+
+
+# class MultiClassSegment(Segment):
+#     def __init__(self, dense_array: np.ndarray, voxelsize=None):
+#         super().__init__(shape=dense_array.shape, dtype=np.uint8, voxelsize=voxelsize, fill_value=0)
+#         dense_array = dense_array.astype(np.uint8)
+
+#         self.classes = {}
+#         self.roi = geometry.one_roi(dense_array, return_index=True)
+#         dense_array = dense_array[self.roi]
+#         if dense_array.shape[0] == 0:
+#             return
+#         spoint_new = [self.roi[i].start for i in range(dense_array.ndim)]
+#         for c in range(1, dense_array.max()+1):
+#             self.classes[c] = MultiPartSegment(dense_array == c, voxelsize=voxelsize,
+#                                                shape=self.shape, dtype=self.dtype, spoint=spoint_new)
+
+#     def todense(self):
+#         return self[tuple([np.s_[:] for i in range(len(self.shape))])]
+
+#     def __getitem__(self, index):
+#         res = get_default_array_from_roi(index, self.shape, self.dtype, self.fill_value)
+#         for c in self.classes:
+#             if type(res) == np.ndarray:
+#                 res += (self.classes[c][index]*c).astype(self.dtype)
+#             else:
+#                 res += self.classes[c][index]*c
+
+#         return res
+
+#     def __repr__(self):
+#         return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-\nsegments={self.classes!r}'
+
+#     def __str__(self):
+#         return f'{self.dtype}-voxelsize={self.voxelsize}-{roi_str(self.roi)}-segments={len(self.classes)}'
+
 
 class SingleSegment:
-    def __init__(self, dense_array=None, dtype=None, shape=None, spoint=None):
-
-        assert (dense_array is None and shape is not None) or (dense_array is not None and (
-            (shape is None and spoint is None) or (shape is not None and spoint is not None)))
+    def __init__(self, dense_array: np.ndarray, voxelsize=None, dtype=None, shape=None, spoint=None, fill_value=0, find_roi_if_shape_is_bigger=True):
         self.dtype = dtype if dtype else dense_array.dtype
         self.shape = shape if shape else dense_array.shape
+        self.voxelsize = np.array(voxelsize if not (voxelsize is None) else [1, 1, 1])
+        self.fill_value = fill_value
+        assert dense_array is not None
+        assert (shape is None and spoint is None) or (shape is not None and spoint is not None)
 
-        if dense_array is None:
-            self.roi = np.s_[0:0, 0:0, 0:0]
-            self.data = np.zeros((0, 0, 0))
+        if find_roi_if_shape_is_bigger:
+            tmp_roi = geometry.one_roi(dense_array, return_index=True, fill_value=fill_value)
         else:
-            tmp_roi = geometry.one_roi(dense_array, return_index=True)
-            self.data = dense_array[tmp_roi]
-            self.roi = add_spoint2roi(tmp_roi, spoint)
+            tmp_roi = tuple([slice(0, dense_array.shape[i]) for i in range(len(shape))])
+        self.data = dense_array[tmp_roi]
+        self.roi = add_spoint2roi(tmp_roi, spoint)
 
     def todense(self):
         return self[tuple([np.s_[:] for i in range(len(self.shape))])]
@@ -188,6 +229,8 @@ class SingleSegment:
                     return self.todense()[index]
 
             res = np.zeros(new_shape, self.dtype)
+            if self.fill_value:
+                res[:] = self.fill_value
             # print(new_shape, new_shape_idx, data_idx)
             if not not_in_range:
                 res[new_shape_idx] = self.data[data_idx]
@@ -195,6 +238,9 @@ class SingleSegment:
             return res[ret]
         print(f'warning! this get item {index} is not supported and cause speed problem')
         return self.todense()[index]
+
+    def to_multipart_segment(self):
+        return MultiPartSegment(self.data, self.voxelsize, self.dtype, self.shape, get_spoint(self.roi))
 
     def __repr__(self):
         return f'{self.shape}(memoryshape={self.data.shape})-{self.dtype}-{roi_str(self.roi)}'
@@ -255,12 +301,105 @@ class SingleSegment:
 
 def test(data, data_segment=None):
     if data_segment is None:
-        data_segment = MultiClassSegment(data)
+        data_segment = SegmentArray(data)
     assert data_segment.todense().sum() == data.sum()
     assert data_segment.todense().shape == data.shape
     assert data_segment[data_segment.roi].sum() == data.sum()
     assert np.all(data_segment[data_segment.roi] == data[data_segment.roi])
-    import pickle
-    assert len(pickle.dumps(data_segment)) < data.nbytes/10
+    assert np.all((data_segment == 1) == (data == 1))
+    assert np.all((data_segment == 0) == (data == 0))
+    # import pickle
+    # assert len(pickle.dumps(data_segment)) < data.nbytes/2, f'size not reduced {len(pickle.dumps(data_segment))}/{data.nbytes}'
 
     pass
+
+
+class SegmentArray:
+    def __init__(self, dense_array: np.ndarray, voxelsize=None, fill_value=0, multi_part=True, dtype=None, shape=None, spoint=None, mask_roi=None, use_mask_roi_only=False, find_roi_if_shape_is_bigger=True):
+
+        self.dtype = dtype if dtype else dense_array.dtype
+        self.shape = shape if shape else dense_array.shape
+        self.voxelsize = np.array(voxelsize if not (voxelsize is None) else [1, 1, 1])
+        self.fill_value = fill_value
+        assert dense_array is not None
+        assert (shape is None and spoint is None) or (shape is not None and spoint is not None)
+
+        if find_roi_if_shape_is_bigger:
+            tmp_roi = geometry.one_roi(dense_array, return_index=True, fill_value=fill_value, mask_roi=mask_roi)
+        else:
+            tmp_roi = tuple([slice(0, dense_array.shape[i]) for i in range(len(shape))])
+        dense_array = dense_array[tmp_roi]
+        self.roi = add_spoint2roi(tmp_roi, spoint)
+
+        if multi_part:
+            labels, seg_count = geometry.connected_components(dense_array != fill_value, return_N=True)
+            # labels, seg_count = dense_array, 10
+            self.segments = []
+            for l in range(1, seg_count+1):
+                new_dense = np.full(dense_array.shape, self.fill_value, self.dtype)
+                idx = labels == l
+                new_dense[idx] = dense_array[idx]
+                self.segments.append(SingleSegment(new_dense, shape=self.shape, spoint=get_spoint(self.roi),
+                                     find_roi_if_shape_is_bigger=find_roi_if_shape_is_bigger))
+        else:
+            self.segments = [SingleSegment(dense_array, shape=self.shape, spoint=get_spoint(self.roi),
+                                           find_roi_if_shape_is_bigger=find_roi_if_shape_is_bigger)]
+
+    def todense(self):
+        return self[tuple([np.s_[:] for i in range(len(self.shape))])]
+
+    def __getitem__(self, index):
+        res = get_default_array_from_roi(index, self.shape, self.dtype, self.fill_value)
+        for s in self.segments:
+            if self.dtype == bool:
+                res |= s[index]
+            else:
+                res += s[index]
+
+        return res
+
+    def max(self):
+        return max([s.max() for s in self.segments])
+
+    def min(self):
+        return max([s.max() for s in self.segments])
+
+    def sum(self):
+        if self.fill_value == 0 or self.fill_value == False:
+            return self[self.roi].sum()
+
+        if self.fill_value == True:
+            in_roi = self[self.roi].sum()
+            roi_size = np.prod(get_shape_from_roi(self.roi, self.shape))
+            size = np.prod(self.shape)
+            return size-roi_size+in_roi
+
+        return self.todense().sum()
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, SegmentArray):
+            assert len(self.shape) == len(other.shape)
+            # if self.fill_value == other.fill_value:
+            rng = tuple([slice(min(self.roi[i].start, other.roi[i].start), max(self.roi[i].stop, other.roi[i].stop)) for i in range(len(self.roi))])
+            res = self[rng] == other[rng]
+            new_fill_value = self.fill_value == other.fill_value
+            # else:
+            #     rng = tuple([slice(0, other.shape[i]) for i in range(len(other.shape))])
+            #     res = self[rng] == other[rng]
+            #     # return SegmentArray(res, voxelsize=self.voxelsize, shape=self.shape, spoint=get_spoint(self.roi),  fill_value=True, multi_part=True)
+            #     new_fill_value = False
+
+        elif isinstance(other, np.ndarray):
+            rng = tuple([slice(0, other.shape[i]) for i in range(other.ndim)])
+            res = self[rng] == other[rng]
+            # return SegmentArray(res, voxelsize=self.voxelsize, shape=self.shape, spoint=get_spoint(self.roi),  fill_value=True, multi_part=True)
+            new_fill_value = res.sum() > (res.size/2)
+        else:
+            rng = self.roi
+            res = self[rng] == other
+            new_fill_value = self.fill_value == other
+
+          #
+
+        return SegmentArray(res, voxelsize=self.voxelsize, shape=self.shape, spoint=get_spoint(rng),  fill_value=new_fill_value, multi_part=True, find_roi_if_shape_is_bigger=False)

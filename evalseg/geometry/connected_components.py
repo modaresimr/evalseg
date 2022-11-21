@@ -6,10 +6,10 @@ import concurrent.futures
 
 
 def connected_components(bianry_array, return_N=True):
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        f = executor.submit(__cc3d_connected_components, bianry_array)
-        ret, count = f.result()
-    # ret, count = __cc3d_connected_components(bianry_array)
+    # with concurrent.futures.ProcessPoolExecutor() as executor:
+    #     f = executor.submit(__cc3d_connected_components, bianry_array)
+    #     ret, count = f.result()
+    ret, count = __cc3d_connected_components(bianry_array)
     if return_N:
         return ret, count
     return ret

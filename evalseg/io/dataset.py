@@ -1,10 +1,11 @@
+from pathlib import Path
 import numpy as np
 import json
 import os
 import zipfile
 import gzip
 from .. import common
-from . import MultiClassSegment
+from . import SegmentArray
 from .nib import read_nib
 import pickle
 GT = "GroundTruth"
@@ -37,7 +38,7 @@ class Dataset:
             return False
         return True
 
-    def get(self, typ, case, compress=False):
+    def get(self, typ, case, numpy_array=False):
         if self._is_valid_cache(typ, case):
             return self._cache[typ]
 
@@ -51,21 +52,33 @@ class Dataset:
             print(f"can not load {typ} {case}")
             return None, None
         data = self.read_file(path)
+
+        if numpy_array:
+            if isinstance(data, SegmentArray):
+                return data.todense(), data.voxelsize
+            else:
+                return data
+
+        if isinstance(data, SegmentArray):
+            return data
+
+        data_arr, voxelsize = data
+        return SegmentArray(data_arr, voxelsize, multi_part=typ != CT)
         # if typ != CT and type(data) == tuple and type(data[0]) == np.ndarray:
         #     data_arr, voxelsize = data
         #     return MultiClassSegment(data_arr, voxelsize), voxelsize
-        return data
+        # return data
 
     def read_file(self, path):
         return get_file(path)
 
-    def get_CT(self, id):
+    def get_CT(self, id) -> SegmentArray:
         return self.get(CT, id)
 
-    def get_groundtruth(self, id):
+    def get_groundtruth(self, id) -> SegmentArray:
         return self.get(GT, id)
 
-    def get_prediction(self, method, id):
+    def get_prediction(self, method, id) -> SegmentArray:
         return self.get(method, id)
 
     def get_prediction_methods(self, case=None):
@@ -130,7 +143,7 @@ def _load_zip_info(path):
                     if not (c in current):
                         current[c] = {}
                     current = current[c]
-            current[t] = f"{path}#{zpath}"
+            current[t.split('.')[0]] = f"{path}#{zpath}"
 
     return res
 
@@ -138,7 +151,10 @@ def _load_zip_info(path):
 def _load_dir_info(path):
     res = {}
     for file in os.listdir(path):
-        res[file.replace('.zip', '')] = load_dataset_info(f"{path}/{file}")
+        key = file.split('.')[0]
+        value = load_dataset_info(f"{path}/{file}")
+        # if key not in res:
+        res[key] = value
     return res
 
 
@@ -155,16 +171,37 @@ def get_file(path: str):
     try:
         if "#" in path:
             zname, zpath = path.split("#")
-            ext = os.path.splitext(zpath)[1]
+            zdir, zfile = os.path.split(zpath)
+            zdir = f'{zdir}/' if zdir != '' else ''
+            fpath = f'{zdir}{zfile.split(".")[0]}'
             with zipfile.ZipFile(zname, "r") as archive:
-                return open_data(archive.read(zpath), ext)
-        ext = os.path.splitext(path)[1]
-        if ext.endswith('.gz'):
-            with gzip.open(path) as f:
-                return open_data(f.read(), ext.replace('.gz', ''))
-        else:
-            with open(path, "rb") as f:
-                return open_data(f.read(), ext)
+                for eext in ['.gz', '']:
+                    for ext in ['pkl', 'nii']:
+                        try:
+                            f = archive.read(f'{fpath}.{ext}{eext}')
+                            if eext == '.gz':
+                                return open_data(gzip.decompress(f), ext)
+                            return open_data(f, ext)
+                        except:
+                            continue
+                raise Exception('not found')
+
+        dir, file = os.path.split(path)
+        dir = f'{dir}/' if dir != '' else ''
+        fpath = f'{dir}/{file.split(".")[0]}'
+        for eext in ['.gz', '']:
+            for ext in ['pkl', 'nii']:
+                try:
+                    if eext == '.gz':
+                        with gzip.open(f'{fpath}.{ext}{eext}') as f:
+                            return open_data(f.read(), ext)
+                    else:
+                        with open(f'{fpath}.{ext}{eext}', "rb") as f:
+                            return open_data(f.read(), ext)
+                except:
+                    continue
+        raise Exception('not found')
+
     except Exception as e:
         print(f"can not load {path}: {e}")
         raise
