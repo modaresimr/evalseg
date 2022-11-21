@@ -3,39 +3,65 @@ from functools import partial
 
 import numpy as np
 from tqdm.auto import tqdm
+import traceback
 
 
 def _chunk_run(chunks, runner):
     # print(chunks)
-    res = [runner(**c) if type(c) == dict else runner(c) for c in chunks]
+    res = [__run(c, runner) for c in chunks]
     return res
 
 
-def parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=1000000, silent=False):
-    generetor = _parallel_runner(runner, items, max_cpu=max_cpu, parallel=parallel, max_threads=max_threads,)
+def __run(params, runner):
+    # print('__run', params)
+    try:
+        if type(params) == dict:
+            # print('dict')
+            return runner(**params)
+        if type(params) == list:
+            # print('list')
+            runner(*params)
+        # print('other    ')
+        return runner(params)
+    except Exception as e:
+        if isinstance(e, MemoryError):
+            raise
+        print(e)
+        traceback.print_exc()
+        return e
+
+
+def parallel_runner(runner, items, *, max_cpu=0, maxtasksperchild=10, parallel=True, max_threads=1000000, silent=False):
+    generetor = _parallel_runner(runner, items, max_cpu=max_cpu, maxtasksperchild=maxtasksperchild, parallel=parallel, max_threads=max_threads,)
     pbar = tqdm(generetor, total=len(items), disable=silent)
-    return pbar
-    # for i, x in pbar:
-    #     pbar.set_postfix(f'{i}'[0:100])
-    #     yield i, x
+    # return pbar
+    for i, x in pbar:
+        pbar.set_postfix_str(f'{i}'[0:100])
+        yield i, x
 
 
-def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=1000000):
+def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, maxtasksperchild=10, max_threads=1000000):
     max_cpu = multiprocessing.cpu_count() if max_cpu <= 0 else max_cpu
-    if parallel and max_cpu > 1:
+    if parallel:
 
-        spls = np.array_split(range(len(items)), max_threads)
-        chunks = [items[spl[0]: spl[-1] + 1] for spl in spls if len(spl)]
+        # spls = np.array_split(range(len(items)), max_threads)
+        # chunks = [items[spl[0]: spl[-1] + 1] for spl in spls if len(spl)]
+        maxchunks = (len(items)-1)//max_threads + 1
 
         # pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)  # TODO: maxchunk
-        with NoDaemonPool()(max_cpu, maxtasksperchild=20) as pool:
-            result = pool.imap(partial(_chunk_run, runner=runner), chunks)
+        with NoDaemonPool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:
+            # with multiprocessing.Pool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:
+            # result = pool.imap(partial(_chunk_run, runner=runner), chunks)
+            result = pool.imap(partial(__run, runner=runner), items, chunksize=maxchunks)
             try:
                 # print(result)
-                for c in chunks:
-                    # print(c)
-                    for i, r in enumerate(result.next()):
-                        yield c[i], r
+                for c in items:
+                    # print('c', c)
+                    yield c, result.next()
+                # for c in chunks:
+                #     # print(c)
+                #     for i, r in enumerate(result.next()):
+                #         yield c[i], r
             except KeyboardInterrupt:
                 # pool.terminate()
                 # pool.join()
@@ -45,8 +71,11 @@ def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, max_threads=100
 
     else:
         for item in items:
-            res = _chunk_run([item], runner)
-            yield item, res[0]
+            res = __run(item, runner)
+            yield item, res
+        # for item in items:
+        #     res = _chunk_run([item], runner)
+        #     yield item, res[0]
             # yield item, res
 
 
@@ -63,7 +92,7 @@ class NoDaemonProcess(multiprocessing.Process):
 # We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
 # because the latter is only a wrapper function, not a proper class.
 
-def NoDaemonPool():
+def NoDaemonPool(*args, **kwargs):
     class NoDaemonPool(multiprocessing.Pool().__class__):
         # Process = NoDaemonProcess
 
@@ -71,4 +100,9 @@ def NoDaemonPool():
         def Process(ctx, *args, **kwds):
             return NoDaemonProcess(*args, **kwds)
 
-    return NoDaemonPool
+    return NoDaemonPool(*args, **kwargs)
+
+
+def __test(arg1, arg2):
+    print(f'arg1={arg1} ,arg2={arg2}')
+    return f'arg1={arg1} ,arg2={arg2}'
