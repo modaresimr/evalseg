@@ -38,7 +38,7 @@ class MME(MetricABS):
         self.optimize_memory = True
 
     def _calc_component_info(self, component: SegmentArray, cid):
-        print('cid=', cid)
+        # print('cid=', cid)
         # return {}
         spacing = component.voxelsize
         gt_component = component.todense()

@@ -37,8 +37,10 @@ class MetricABS(Object):
     def evaluate_numpy(self, test: np.ndarray, **kwargs):
         return self.evaluate(SegmentArray(test, self.reference.voxelsize))
 
-    def evaluate_multi(self, test_dic, **kwargs):
-        res = parallel_runner(_evaluate_helper, [{'metric': self, 'p': k, 'data': test_dic[k], 'kwargs':kwargs} for k in test_dic])
+    def evaluate_multi(self, test_dic, parallel=True, max_cpu=0, **kwargs):
+        res = parallel_runner(_evaluate_helper,
+                              [{'metric': self, 'p': k, 'data': test_dic[k], 'kwargs':kwargs}for k in test_dic],
+                              parallel=parallel, max_cpu=max_cpu)
         return {k[0]: v for k, v in res}
 
     def evaluate_multi_numpy(self, test_dic, **kwargs):

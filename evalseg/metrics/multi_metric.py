@@ -32,18 +32,18 @@ class MultiMetric(MetricABS):
                 for c in self.metrics
                 ]
 
-    def evaluate(self, test: SegmentArray, return_debug=False, parallel=1, **kwargs):
-        res = self.evaluate_multi({'p': test}, return_debug, parallel, **kwargs)
+    def evaluate(self, test: SegmentArray, return_debug=False, parallel=True, max_cpu=0, **kwargs):
+        res = self.evaluate_multi({'p': test}, return_debug, parallel, max_cpu=max_cpu, **kwargs)
         if return_debug:
             return res[0]['p'], res[1]['p'],
         return res['p']
 
-    def evaluate_multi(self, test_dic, return_debug=False, parallel=0, **kwargs):
+    def evaluate_multi(self, test_dic, return_debug=False, parallel=True, max_cpu=0, **kwargs):
         items = self.get_items_multi(test_dic, return_debug, **kwargs)
         if len(items) == 1:
             parallel_res = [(items[0], _evaluate_helper(**items[0]))]
         else:
-            parallel_res = parallel_runner(_evaluate_helper, items, parallel=parallel, silent=len(items) == 1)
+            parallel_res = parallel_runner(_evaluate_helper, items, parallel=parallel, max_cpu=max_cpu, silent=len(items) == 1)
         res = {p: {c: {} for c in self.metrics} for p in test_dic}
         debug_info = {p: {c: {} for c in self.metrics} for p in test_dic}
         for k, v in parallel_res:
