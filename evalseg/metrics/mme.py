@@ -577,13 +577,10 @@ def _get_merged_components(labels: SegmentArray, classes):
         The np array with the same size of labels and type of bool where labels[idx] in classes then out[idx]=True
     """
     # component_merged = np.zeros(labels.shape, bool)
-    component_merged = None
+    component_merged = SegmentArray(np.zeros((0, 0, 0), bool), shape=labels.shape, spoint=[0, 0, 0], dtype=bool)
 
     for l in classes:
-        if component_merged is None:
-            component_merged = labels == l
-        else:
-            component_merged |= (labels == l)
+        component_merged |= (labels == l)
 
     return component_merged
 
