@@ -1,4 +1,5 @@
 import multiprocessing
+import ray.util.multiprocessing as raymlp
 from functools import partial
 
 import numpy as np
@@ -93,7 +94,9 @@ class NoDaemonProcess(multiprocessing.Process):
 # because the latter is only a wrapper function, not a proper class.
 
 def NoDaemonPool(*args, **kwargs):
-    class NoDaemonPool(multiprocessing.Pool().__class__):
+
+    # class NoDaemonPool(multiprocessing.Pool().__class__):
+    class NoDaemonPool(raymlp.Pool().__class__):
         # Process = NoDaemonProcess
 
         @staticmethod
