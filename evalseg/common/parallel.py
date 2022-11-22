@@ -95,8 +95,8 @@ class NoDaemonProcess(multiprocessing.Process):
 
 def NoDaemonPool(*args, **kwargs):
 
-    # class NoDaemonPool(multiprocessing.Pool().__class__):
-    class NoDaemonPool(raymlp.Pool().__class__):
+    class NoDaemonPool(multiprocessing.Pool().__class__):
+        # class NoDaemonPool(raymlp.Pool().__class__):
         # Process = NoDaemonProcess
 
         @staticmethod
