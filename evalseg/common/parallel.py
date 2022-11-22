@@ -21,7 +21,7 @@ def __run(params, runner):
             return runner(**params)
         if type(params) == list:
             # print('list')
-            runner(*params)
+            return runner(*params)
         # print('other    ')
         return runner(params)
     except Exception as e:
@@ -32,7 +32,7 @@ def __run(params, runner):
         # return e
 
 
-def parallel_runner(runner, items, *, max_cpu=0, maxtasksperchild=10, parallel=True, max_threads=1000000, silent=False):
+def parallel_runner(runner, items, max_cpu=0, maxtasksperchild=10, parallel=True, max_threads=1000000, silent=False):
     generetor = _parallel_runner(runner, items, max_cpu=max_cpu, maxtasksperchild=maxtasksperchild, parallel=parallel, max_threads=max_threads,)
     pbar = tqdm(generetor, total=len(items), disable=silent)
     # return pbar
@@ -95,17 +95,19 @@ class NoDaemonProcess(multiprocessing.Process):
 
 def NoDaemonPool(*args, **kwargs):
 
-    class NoDaemonPool(multiprocessing.Pool().__class__):
-        # class NoDaemonPool(raymlp.Pool().__class__):
+    class NoDaemonPoolCLS(multiprocessing.Pool().__class__):
+        # class NoDaemonPoolCLS(raymlp.Pool().__class__):
         # Process = NoDaemonProcess
 
         @staticmethod
         def Process(ctx, *args, **kwds):
             return NoDaemonProcess(*args, **kwds)
 
-    return NoDaemonPool(*args, **kwargs)
+    return NoDaemonPoolCLS(*args, **kwargs)
 
 
 def __test(arg1, arg2):
+    import time
+    time.sleep(arg1)
     print(f'arg1={arg1} ,arg2={arg2}')
     return f'arg1={arg1} ,arg2={arg2}'
