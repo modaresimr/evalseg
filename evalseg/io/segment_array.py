@@ -375,17 +375,17 @@ class SegmentArray:
     def min(self):
         return max([s.max() for s in self.segments])
 
-    def sum(self, axis=None):
+    def sum(self, axis=None, dtype=None):
         if self.fill_value == 0 or self.fill_value == False:
-            return self[self.roi].sum(axis)
+            return self[self.roi].sum(axis, dtype=dtype)
 
         if self.fill_value == True:
-            in_roi = self[self.roi].sum(axis)
+            in_roi = self[self.roi].sum(axis, dtype=dtype)
             roi_size = np.prod(get_shape_from_roi(self.roi, self.shape))
             size = np.prod(self.shape)
             return size-roi_size+in_roi
 
-        return self.todense().sum(axis)
+        return self.todense().sum(axis, dtype=dtype)
 
     def __eq__2(self, other):
         """Overrides the default implementation"""

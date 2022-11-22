@@ -13,7 +13,7 @@ from ..common import Cache
 from ..io import SegmentArray
 from ..compress import compress_arr, decompress_arr
 from . import MetricABS
-
+import auto_profiler
 epsilon = 0.001
 
 TP = "tp"
@@ -327,11 +327,13 @@ class MME(MetricABS):
                     boundary_fpc_v[fp_comp.todense()] = boundary_fpc
                     boundary_fnc_v[fn_comp.todense()] = boundary_fnc
 
-                boundary_gtc_sum = boundary_tpc.sum()+boundary_fnc.sum()
+                boundary_fnc_sum = boundary_fnc.sum(dtype=np.float64)
+                boundary_tpc_sum = boundary_tpc.sum(dtype=np.float64)
+                boundary_gtc_sum = boundary_tpc_sum+boundary_fnc_sum
                 if boundary_gtc_sum > 0:
-                    boundary_fp = min(1, boundary_fpc.sum()/boundary_gtc_sum)
-                    boundary_fn = boundary_fnc.sum() / boundary_gtc_sum
-                    boundary_tp = boundary_tpc.sum() / boundary_gtc_sum
+                    boundary_fp = min(1, boundary_fpc.sum(dtype=np.float64)/boundary_gtc_sum)
+                    boundary_fn = boundary_fnc_sum / boundary_gtc_sum
+                    boundary_tp = boundary_fnc_sum / boundary_gtc_sum
 
                     m[B][TP] += boundary_tp
                     m[B][FN] += boundary_fn
