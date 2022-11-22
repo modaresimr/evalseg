@@ -66,7 +66,7 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, ctlbl='CT', show_ori
 
         data[p] = {
             "pred": (np.clip(x, clipmin, clipmax) - clipmin)
-            / (clipmax - clipmin + 0.0000000001)
+            / (clipmax - clipmin + 0.0001)
         }  # min(clipmax,items[p].max())}
 
         if p == origsize_lbl:

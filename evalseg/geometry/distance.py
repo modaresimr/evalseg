@@ -9,10 +9,11 @@ def distance(img, spacing=None, mode="in", mask_roi=None):
     mode=in,out,both
     """
     spacing = spacing if not (spacing is None) else [1, 1, 1]
+    trimed_idx = mask_roi if mask_roi is not None else np.s_[:, :, :]
+
     if img.shape[2] == 1:
         img = img.reshape(img.shape[0], img.shape[1])
-        if mask is not None:
-            mask = mask.reshape(mask.shape[0], mask.shape[1])
+        trimed_idx = trimed_idx[0], trimed_idx[1]
         spacing = spacing[0], spacing[1]
 
     orig_img = img
@@ -24,23 +25,20 @@ def distance(img, spacing=None, mode="in", mask_roi=None):
     # trimed_idx = one_roi(img, margin=(np.array(img.shape) * ignore_distance_rate + 4).astype(int),
     #                      return_index=True, mask_roi=mask_roi)
 
-    trimed_idx = mask_roi if mask_roi is not None else np.s_[:, :, :]
-
-    img = img[trimed_idx]
     modes = ["in", "out"] if mode == "both" else [mode]
 
     dst = np.zeros(orig_img.shape, np.float16)
 
     if "out" in modes:
         # print('shape', img.shape, dst.shape)
-
-        newdst = edt.edt(~img, anisotropy=spacing, black_border=False)
+        imgo = img[trimed_idx]
+        newdst = edt.edt(~imgo, anisotropy=spacing, black_border=False)
         dst[:] = newdst.max()
         dst[trimed_idx] = newdst
     if "in" in modes:
-        trimed_idx = one_roi(img, margin=4, return_index=True)
-        img = img[trimed_idx]
-        dst[trimed_idx] += edt.edt(img, anisotropy=spacing, black_border=True) * (-1 if "out" in modes else 1)
+        new_trimed_idx = one_roi(orig_img, mask_roi=trimed_idx, margin=4, return_index=True)
+        imgi = img[new_trimed_idx]
+        dst[new_trimed_idx] += edt.edt(imgi, anisotropy=spacing, black_border=True) * (-1 if "out" in modes else 1)
 
     # if mode == 'both':
     #     dst[trimed_idx] = edt.edt(~img, anisotropy=spacing, black_border=False)

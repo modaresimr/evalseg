@@ -24,11 +24,11 @@ def __run(params, runner):
         # print('other    ')
         return runner(params)
     except Exception as e:
-        if isinstance(e, MemoryError):
-            raise
-        print(e)
-        traceback.print_exc()
-        return e
+        # if isinstance(e, MemoryError):
+        raise e
+        # print(e)
+        # traceback.print_exc()
+        # return e
 
 
 def parallel_runner(runner, items, *, max_cpu=0, maxtasksperchild=10, parallel=True, max_threads=1000000, silent=False):

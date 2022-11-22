@@ -239,9 +239,6 @@ class SingleSegment:
         print(f'warning! this get item {index} is not supported and cause speed problem')
         return self.todense()[index]
 
-    def to_multipart_segment(self):
-        return MultiPartSegment(self.data, self.voxelsize, self.dtype, self.shape, get_spoint(self.roi))
-
     def __repr__(self):
         return f'{self.shape}(memoryshape={self.data.shape})-{self.dtype}-{roi_str(self.roi)}'
 
@@ -351,10 +348,9 @@ class SegmentArray:
     def __getitem__(self, index):
         res = get_default_array_from_roi(index, self.shape, self.dtype, self.fill_value)
         for s in self.segments:
-            if self.dtype == bool:
-                res |= s[index]
-            else:
-                res += s[index]
+            segres = s[index]
+            segres_mask = segres != self.fill_value
+            res[segres_mask] = segres[segres_mask]
 
         return res
 

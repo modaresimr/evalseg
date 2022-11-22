@@ -46,8 +46,11 @@ class MME(MetricABS):
         gt_no_border = gt_component & ~gt_border
         gt_with_border = gt_component | gt_border
         gt_border_seg = SegmentArray(gt_border)
-        in_dst = geometry.distance(gt_no_border, spacing=spacing, mode="in", mask_roi=gt_border_seg.roi)
         safe_roi = geometry.calc_safe_roi(gt_border_seg.shape, gt_border_seg.roi, roi_rate=3)
+        segment_roi = gt_border_seg.roi
+
+        in_dst = geometry.distance(gt_no_border, spacing=spacing, mode="in", mask_roi=segment_roi)
+
         out_dst = geometry.distance(gt_with_border, spacing=spacing, mask_roi=safe_roi, mode="out")
 
         if self.optimize_memory:
@@ -57,13 +60,13 @@ class MME(MetricABS):
 
         # gt_dst = out_dst + in_dst
 
-        skeleton = (geometry.skeletonize(gt_component, spacing=spacing) > 0)
+        skeleton = (geometry.skeletonize(gt_component, spacing=spacing, mask_roi=segment_roi) > 0)
         if self.optimize_memory:
             del gt_component
             gc.collect()
         skeleton_dst = geometry.distance(skeleton, spacing=spacing, mask_roi=safe_roi, mode="out")
         # skeleton_dst[out_dst>skeleton_dst]=out_dst[out_dst>skeleton_dst]# this is an approximation so to avoid negative weights
-        skeleton = SegmentArray(skeleton, mask_roi=gt_border_seg.roi)
+        skeleton = SegmentArray(skeleton, mask_roi=segment_roi)
 
         deminutor = skeleton_dst + in_dst
         deminutor[np.abs(deminutor) < 1] = 1

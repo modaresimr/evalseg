@@ -7,12 +7,15 @@ from .roi import one_roi
 
 
 # @Cache.memoize()
-def skeletonize(img, spacing=None, surface=False, do_smoothing=True):
+def skeletonize(img, spacing=None, surface=False, mask_roi=None, do_smoothing=True):
 
     if spacing is None:
         spacing = [1, 1, 1]
     orig_img = img
-    trimed_idx = one_roi(img, margin=2, return_index=True)
+    if mask_roi is None:
+        trimed_idx = one_roi(img, margin=2, return_index=True)
+    else:
+        trimed_idx = mask_roi
     # trimed_idx = np.s_[:, :, :]
     img = img[trimed_idx]
 

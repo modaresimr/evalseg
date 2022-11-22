@@ -130,5 +130,9 @@ def _find_boundaries(img, contours):
             maxx = x + w
         if y + h > maxy:
             maxy = y + h
+    if maxx < minx:
+        minx, maxx = 0, iw
+    if maxy < miny:
+        miny, maxy = 0, ih
 
     return (minx, miny, maxx, maxy)
