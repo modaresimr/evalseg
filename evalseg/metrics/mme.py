@@ -134,15 +134,15 @@ class MME(MetricABS):
 
         helperc = {}
         helperc["voxel_volume"] = spacing[0] * spacing[1] * spacing[2]
-        helperc["gt_labels"] = SegmentArray(gt_labels)
+        helperc["gt_labels"] = gt_labels
         helperc["gN"] = gN
 
-        gt_regions = geometry.expand_labels(gt_labels, spacing=spacing).astype(np.uint8)
-        helperc["gt_regions"] = gt_regions
+        gt_regions = geometry.expand_labels(gt_labels.todense(), spacing=spacing).astype(np.uint8)
+        helperc["gt_regions"] = SegmentArray(gt_regions)
 
         helperc["total_gt_volume"] = reference.sum()*helperc["voxel_volume"]
 
-        items = [{'cid': i, 'component': SegmentArray(gt_labels == i, spacing, multi_part=False)} for i in range(1, gN + 1)]
+        items = [{'cid': i, 'component': gt_labels == i} for i in range(1, gN + 1)]
         # items = [{'cid': i, 'component': None} for i in range(1, gN + 1)]
 
         maxcpu = psutil.virtual_memory().available//(30 * 1024 * 1024 * 1024)+1
@@ -167,12 +167,12 @@ class MME(MetricABS):
         # dc = common.Object()
         info = {k: {} for k in m_def}
 
-        testc = test.todense()
+        # testc = test.todense()
         helperc = self.helper
 
         resc = {"total": {}, "components": {}}
 
-        gt_labels, gN = helperc["gt_labels"].todense(), helperc["gN"]
+        gt_labels, gN = helperc["gt_labels"], helperc["gN"]
 
         # dc.gt_labels = dc.helperc["gt_labels"].segments
         # dc.gN = len(dc.helperc["gt_labels"].segments)
@@ -182,13 +182,14 @@ class MME(MetricABS):
         # dc.pN = len(dc.testc.segments)
 
         # extend gt_regions for not included components in prediction {
-        gt_regions = helperc["gt_regions"]
-        gt_regions_idx = _get_component_idx(gt_regions[testc])
-        gt_region_mask = _get_merged_components(gt_regions, gt_regions_idx)
-        rel_gt_regions = np.zeros_like(gt_regions)
 
+        gt_regions = helperc["gt_regions"]
+        gt_regions_idx = _get_component_idx(gt_regions[test])
+        gt_region_mask = _get_merged_components(gt_regions, gt_regions_idx).todense()
+        rel_gt_regions = np.zeros(gt_regions.shape, gt_regions.dtype)
         rel_gt_regions[gt_region_mask] = gt_regions[gt_region_mask]
         gt_regions = geometry.expand_labels(rel_gt_regions, spacing=reference.voxelsize).astype(np.uint8)
+
         # }
         rel = _get_rel_gt_pred(gt_labels, gN, pred_labels, pN, gt_regions)
         # print('rel', dc.rel)
@@ -211,9 +212,9 @@ class MME(MetricABS):
 
             if debug[UI] and is2d:
                 ui_regions = gt_regions.copy()
-                ndst_in = hci["skgt_normalized_dst_in"].todense()
-                ndst_out = hci["skgt_normalized_dst_out"].todense()
-                ndst = ndst_in+ndst_out
+                ndst_in = hci["skgt_normalized_dst_in"]
+                ndst_out = hci["skgt_normalized_dst_out"]
+                ndst = (ndst_in+ndst_out).todense()
                 ndst[ndst > 1] = 1
                 # ndst[ndst > 2] = 0
                 ndst[hci["gt_border"].todense()] = 1
@@ -221,12 +222,12 @@ class MME(MetricABS):
                 ui_regions[ndst == 0] = 0
                 ui.multi_plot_2d(
                     ndst,
-                    component_gt,
+                    component_gt.todense(),
                     {
                         # 'all_pred': dci.component_pred,
                         # "region": ui_regions,
-                        "pred_in_region": pred_in_region,
-                        **{f'p{i}': rel['p+'][i]['comp']
+                        "pred_in_region": pred_in_region.todense(),
+                        **{f'p{i}': rel['p+'][i]['comp'].todense()
                            for i in rel["r+"][ri]["p+"]['idx']
                            }
                     },
@@ -310,21 +311,21 @@ class MME(MetricABS):
             # Relative Volume}
 
             # Boundary================================{
-                gt_skel = hci["gt_skeleton"].todense()
-                skgtn_dst_in = hci["skgt_normalized_dst_in"].todense()
-                skgtn_dst_out = hci["skgt_normalized_dst_out"].todense()
+                gt_skel = hci["gt_skeleton"]  # .todense()
+                skgtn_dst_in = hci["skgt_normalized_dst_in"]  # .todense()
+                skgtn_dst_out = hci["skgt_normalized_dst_out"]  # .todense()
 
                 boundary_tpc = skgtn_dst_in[tp_comp]
                 boundary_fnc = skgtn_dst_in[fn_comp]
                 boundary_fpc = skgtn_dst_out[fp_comp]
 
                 if debug[B] or return_debug:
-                    boundary_tpc_v = np.zeros_like(skgtn_dst_in)
-                    boundary_fpc_v = np.zeros_like(skgtn_dst_in)
-                    boundary_fnc_v = np.zeros_like(skgtn_dst_in)
-                    boundary_tpc_v[tp_comp] = boundary_tpc
-                    boundary_fpc_v[fp_comp] = boundary_fpc
-                    boundary_fnc_v[fn_comp] = boundary_fnc
+                    boundary_tpc_v = np.zeros(skgtn_dst_in.shape, skgtn_dst_in.dtype)
+                    boundary_fpc_v = np.zeros(skgtn_dst_in.shape, skgtn_dst_in.dtype)
+                    boundary_fnc_v = np.zeros(skgtn_dst_in.shape, skgtn_dst_in.dtype)
+                    boundary_tpc_v[tp_comp.todense()] = boundary_tpc
+                    boundary_fpc_v[fp_comp.todense()] = boundary_fpc
+                    boundary_fnc_v[fn_comp.todense()] = boundary_fnc
 
                 boundary_gtc_sum = boundary_tpc.sum()+boundary_fnc.sum()
                 if boundary_gtc_sum > 0:
@@ -337,16 +338,16 @@ class MME(MetricABS):
                     m[B][FP] += boundary_fp
                     if debug[B]:
                         if debug[UI] and is2d:
-                            tmp_out = skgtn_dst_out.copy()
+                            tmp_out = skgtn_dst_out.todense()
                             tmp_out[tmp_out > 2] = 0
                             ui.multi_plot_img({
-                                "gtskel": gt_skel,
+                                "gtskel": gt_skel.todense(),
                                 "tp": boundary_tpc_v,
                                 "fn": boundary_fnc_v,
                                 "fp": boundary_fpc_v,
-                                'skeldst_in': skgtn_dst_in,
+                                'skeldst_in': skgtn_dst_in.todense(),
                                 'skeldst_out': tmp_out,
-                                **{f'p+{i}': rel['p+'][i]['comp'] for i in rel["r+"][ri]["p+"]['idx']}
+                                **{f'p+{i}': rel['p+'][i]['comp'].todense() for i in rel["r+"][ri]["p+"]['idx']}
                             }, title=f'B tp+{f(boundary_tp)} fn+{f(boundary_fn)} fp+{f(boundary_fp)}')
 
                         print(f"     B tp+{f(boundary_tp)} fn+{f(boundary_fn)} fp+{f(boundary_fp)}  ri={ri}  ")
@@ -448,11 +449,11 @@ class MME(MetricABS):
 
                 ui.multi_plot_2d(
                     None,
-                    component_pred,
+                    component_pred.todense(),
                     {
                         # 'all_pred': dci.component_pred,
                         # "region": ui_regions,
-                        **{f'r{i}': rel['r+'][i]['comp']
+                        **{f'r{i}': rel['r+'][i]['comp'].todense()
                            for i in rel["p+"][pi]["r+"]['idx']
                            }
                     },
@@ -564,7 +565,7 @@ def _Z(rel, X: Literal["r+", "p+"], xi: int, Y: Literal["r+", "p+"]):
 #     return component_pred, pred_comp
 
 
-def _get_merged_components(labels, classes):
+def _get_merged_components(labels: SegmentArray, classes):
     """get component with ids in classes and return a mask of all elements equal to classes
 
         @param labels: components contatining all labels
@@ -575,27 +576,33 @@ def _get_merged_components(labels, classes):
     np.array of bools
         The np array with the same size of labels and type of bool where labels[idx] in classes then out[idx]=True
     """
-    component_merged = np.zeros(labels.shape, bool)
+    # component_merged = np.zeros(labels.shape, bool)
+    component_merged = None
 
     for l in classes:
-        component_merged |= labels == l
+        if component_merged is None:
+            component_merged = labels == l
+        else:
+            component_merged |= (labels == l)
 
     return component_merged
 
 
-def _get_rel_gt_pred(gt_labels, gN, pred_labels, pN, gt_regions):
+def _get_rel_gt_pred(gt_labels: SegmentArray, gN, pred_labels: SegmentArray, pN, gt_regions: np.ndarray):
     """calculate related components between prediction and ground truth
     it will also provide the prediction in valid region.
 
     """
     rel = {"r+": {}, "p+": {}}
-
     for ri in range(1, gN + 1):
         gt_comp = gt_labels == ri
         pidx = _get_component_idx(pred_labels[gt_comp])
-        preds_in_region = np.zeros_like(pred_labels)
+
+        preds_in_region = np.zeros(pred_labels.shape, pred_labels.dtype)
         region = gt_regions == ri
         preds_in_region[region] = pred_labels[region]
+        preds_in_region = SegmentArray(preds_in_region, multi_part=False)
+
         rel["r+"][ri] = {
             "comp": gt_comp,
             "p+": {
@@ -640,6 +647,10 @@ def add_info(info, property, p_or_r, indx, tp, fn, fp):
 
 
 def get_components_from_segment(segment: SegmentArray):
-    res = np.zeros(segment.shape, np.uint8)
-    res[segment.roi], n = geometry.connected_components(segment[segment.roi], return_N=True)
+    # res = np.zeros(segment.shape, np.uint8)
+    rescc, n = geometry.connected_components(segment[segment.roi], return_N=True)
+
+    spoint = [r.start for r in segment.roi]
+    res = SegmentArray(rescc, segment.voxelsize, dtype=np.uint8, shape=segment.shape, spoint=spoint)
+
     return res, n
