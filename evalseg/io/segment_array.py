@@ -1,9 +1,9 @@
 import numpy as np
 from .. import common, geometry
 import cc3d
-
+import operator
 import memory_profiler
-
+import copy
 
 # class Segment:
 #     def __init__(self, shape, dtype, voxelsize=None, fill_value=0):
@@ -127,10 +127,10 @@ def get_default_array_from_roi(index, orig_shape, dtype, fill_value=0):
         else:
             print(f'warning! this get item {index} is not supported and cause speed problem')
             return np.zeros(orig_shape, dtype)[index]
-    res = np.zeros(new_shape, dtype)[ret]
+    res = np.zeros(new_shape, dtype)
     if fill_value:
         res[:] = fill_value
-    return res
+    return res[ret]
 
 
 # class MultiClassSegment(Segment):
@@ -183,6 +183,11 @@ class SingleSegment:
             tmp_roi = tuple([slice(0, dense_array.shape[i]) for i in range(len(shape))])
         self.data = dense_array[tmp_roi]
         self.roi = add_spoint2roi(tmp_roi, spoint)
+
+    def _operator_single(self, opt):
+        newv = copy.deepcopy(self)
+        newv.fill_value = opt(self.fill_value)
+        newv.data = opt(self.data)
 
     def todense(self):
         return self[tuple([np.s_[:] for i in range(len(self.shape))])]
@@ -336,8 +341,7 @@ class SegmentArray:
                 new_dense = np.full(dense_array.shape, self.fill_value, self.dtype)
                 idx = labels == l
                 new_dense[idx] = dense_array[idx]
-                self.segments.append(SingleSegment(new_dense, shape=self.shape, spoint=get_spoint(self.roi),
-                                     find_roi_if_shape_is_bigger=find_roi_if_shape_is_bigger))
+                self.segments.append(SingleSegment(new_dense, shape=self.shape, spoint=get_spoint(self.roi)))
         else:
             self.segments = [SingleSegment(dense_array, shape=self.shape, spoint=get_spoint(self.roi),
                                            find_roi_if_shape_is_bigger=find_roi_if_shape_is_bigger)]
@@ -372,7 +376,7 @@ class SegmentArray:
 
         return self.todense().sum()
 
-    def __eq__(self, other):
+    def __eq__2(self, other):
         """Overrides the default implementation"""
         if isinstance(other, SegmentArray):
             assert len(self.shape) == len(other.shape)
@@ -395,6 +399,86 @@ class SegmentArray:
             rng = self.roi
             res = self[rng] == other
             new_fill_value = self.fill_value == other
+
+          #
+
+        return SegmentArray(res, voxelsize=self.voxelsize, shape=self.shape, spoint=get_spoint(rng),  fill_value=new_fill_value, multi_part=True, find_roi_if_shape_is_bigger=False)
+
+    def __eq__(self, other):
+        return self._operator(operator.__eq__, other)
+
+    def __ne__(self, other):
+        return self._operator(operator.__ne__, other)
+
+    def __and__(self, other):
+        return self._operator(operator.__and__, other)
+
+    def __or__(self, other):
+        return self._operator(operator.__or__, other)
+
+    def __xor__(self, other):
+        return self._operator(operator.__xor__, other)
+
+    def __invert__(self):
+        assert self.dtype == bool
+        return self._operator_single(np.invert)
+
+    def __abs__(self):
+        assert self.dtype == bool
+        return self._operator_single(operator.__abs__)
+
+    def __add__(self, other):
+        return self._operator(operator.__add__, other)
+
+    def __sub__(self, other):
+        return self._operator(operator.__sub__, other)
+
+    def __neg__(self):
+        return self._operator_single(operator.__neg__)
+
+    def __le__(self, other):
+        return self._operator(operator.__le__, other)
+
+    def __lt__(self, other):
+        return self._operator(operator.__lt__, other)
+
+    def __gt__(self, other):
+        return self._operator(operator.__gt__, other)
+
+    def __ge__(self, other):
+        return self._operator(operator.__ge__, other)
+
+    def _operator_single(self, opt):
+        """Overrides the default implementation"""
+        new_v = copy.deepcopy(self)
+
+        new_v.fill_value = opt(self.fill_value)
+
+        for s in new_v.segments:
+            s.data = opt(s.data)
+            s.fill_value = opt(s.fill_value)
+
+        return new_v
+
+    def _operator(self, opt, other):
+        """Overrides the default implementation"""
+        if isinstance(other, SegmentArray):
+            assert len(self.shape) == len(other.shape)
+            rng = tuple([slice(min(self.roi[i].start, other.roi[i].start), max(self.roi[i].stop, other.roi[i].stop)) for i in range(len(self.roi))])
+            res = opt(self[rng], other[rng])
+            new_fill_value = opt(self.fill_value, other.fill_value)
+        elif isinstance(other, np.ndarray):
+            rng = tuple([slice(0, other.shape[i]) for i in range(other.ndim)])
+            res = opt(self[rng], other[rng])
+            # return SegmentArray(res, voxelsize=self.voxelsize, shape=self.shape, spoint=get_spoint(self.roi),  fill_value=True, multi_part=True)
+            if res.dtype == bool:
+                new_fill_value = res.sum() > (res.size/2)
+            else:
+                new_fill_value = 0
+        else:
+            rng = self.roi
+            res = opt(self[rng], other)
+            new_fill_value = opt(self.fill_value, other)
 
           #
 
