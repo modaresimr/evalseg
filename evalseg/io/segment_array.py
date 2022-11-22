@@ -350,11 +350,22 @@ class SegmentArray:
         return self[tuple([np.s_[:] for i in range(len(self.shape))])]
 
     def __getitem__(self, index):
-        res = get_default_array_from_roi(index, self.shape, self.dtype, self.fill_value)
-        for s in self.segments:
-            segres = s[index]
-            segres_mask = segres != self.fill_value
-            res[segres_mask] = segres[segres_mask]
+        if isinstance(index, np.ndarray):
+            index = SegmentArray(index)
+
+        if isinstance(index, SegmentArray):
+            assert index.dtype == bool
+            if index.fill_value == False:
+                return self[index.roi][index[index.roi]]
+            else:
+                print('warning fill_value is true so it is not recommended')
+                return self.todense()[index]
+        else:
+            res = get_default_array_from_roi(index, self.shape, self.dtype, self.fill_value)
+            for s in self.segments:
+                segres = s[index]
+                segres_mask = segres != self.fill_value
+                res[segres_mask] = segres[segres_mask]
 
         return res
 
