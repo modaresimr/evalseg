@@ -25,8 +25,9 @@ class NSD(MetricABS):
         pr_dst = np.abs(geometry.distance(pred_dense, spacing=test.voxelsize, mask_roi=mask_roi, mode="both"))
         pr_border_tau = SegmentArray(pr_dst < self.tau, mask_roi=mask_roi)
         pr_border = SegmentArray(geometry.find_binary_boundary(pred_dense, mode="inner"), mask_roi=mask_roi)
-        a = (pr_border_tau == (self.gt_border == True)).sum()
-        b = (pr_border == (self.gt_border_tau == True)).sum()
+
+        a = (pr_border_tau & self.gt_border).sum()
+        b = (pr_border & self.gt_border_tau).sum()
         c = pr_border.sum()+self.gt_border.sum()
 
         nsd = (a+b)/c if c != 0 else 0
