@@ -16,7 +16,7 @@ def one_roi(img, margin=0, *, ignore=[], return_index=False, mask_roi=None, fill
     s = [0 for i in range(img.ndim)]
     if mask_roi is not None:
         img = img[mask_roi]
-        s = [m.start for m in mask_roi]
+        s = [m.start if m.start else 0 for m in mask_roi]
     fill_value = fill_value if fill_value is not None else False if img.dtype == bool else 0
 
     # if threshold:

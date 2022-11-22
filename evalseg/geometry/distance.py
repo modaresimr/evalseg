@@ -11,7 +11,7 @@ def distance(img, spacing=None, mode="in", mask_roi=None):
     spacing = spacing if not (spacing is None) else [1, 1, 1]
     trimed_idx = mask_roi if mask_roi is not None else np.s_[:, :, :]
 
-    if img.shape[2] == 1:
+    if img.shape[2] == 1 or img.ndim == 2:
         img = img.reshape(img.shape[0], img.shape[1])
         trimed_idx = trimed_idx[0], trimed_idx[1]
         spacing = spacing[0], spacing[1]
