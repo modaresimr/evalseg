@@ -60,4 +60,4 @@ class MultiMetric(MetricABS):
 def _evaluate_helper(metric, data, return_debug, metric_label, p, **kwargs):
     if any([metric.debug[d] for d in metric.debug]):
         print(f"======= evaluate0 class={metric_label} p={p} ======")
-    return metric.evaluate(data, return_debug=return_debug, debug_prefix=f'c{metric_label}{p} ', ** kwargs)
+    return metric.evaluate(data, return_debug=return_debug, debug_prefix=f'c{metric_label}{p} ', **kwargs)
