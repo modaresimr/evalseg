@@ -658,7 +658,7 @@ def get_components_from_segment(segment: SegmentArray):
 
 
 def get_gt_regions_for_pred(orig_gt_regions: SegmentArray, test: SegmentArray):
-    intestgt = orig_gt_regions[test.roi]
+    intestgt = orig_gt_regions[test.roi].copy()
     # intestgt[test.todense()] = orig_gt_regions[test]
 
     gt_regions_idx = _get_component_idx(intestgt[test[test.roi]])
