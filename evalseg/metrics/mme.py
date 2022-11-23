@@ -674,7 +674,7 @@ def get_gt_regions_for_pred(orig_gt_regions: SegmentArray, test: SegmentArray):
     #     print('error')
     intestgt = geometry.expand_labels(intestgt, spacing=test.voxelsize).astype(np.uint8)
     gt_regions = SegmentArray(intestgt, shape=test.shape, spoint=[r.start for r in test.roi],
-                              calc_roi=False, multi_part=False, fill_value=gt_regions_idx[0])
+                              calc_roi=False, multi_part=False, fill_value=gt_regions_idx[0] if len(gt_regions_idx) else 0)
 
     # ui.multi_plot_img({'orig': orig_gt_regions.todense(), 'regions': gt_regions.todense(), 'test': test.todense()}, interactive=True)
 
