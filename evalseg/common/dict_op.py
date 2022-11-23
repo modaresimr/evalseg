@@ -15,11 +15,15 @@ def multiply(dic1, value):
 
 
 def have_same_keys(dic1, dic2):
-    if type(dic1) != type(dic2):
+    if type(dic1) != dict and type(dic2) == dict:
+        return False
+    if type(dic1) == dict and type(dic2) != dict:
         return False
 
-    if type(dic1) is dict:
+    if type(dic1) == dict and type(dic2) == dict:
         if not all(k in dic2 for k in dic1):
+            return False
+        if not all(k in dic1 for k in dic2):
             return False
 
         for k in dic2:

@@ -47,7 +47,7 @@ def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, maxtasksperchil
 
         # spls = np.array_split(range(len(items)), max_threads)
         # chunks = [items[spl[0]: spl[-1] + 1] for spl in spls if len(spl)]
-        maxchunks = (len(items)-1)//max_threads + 1
+        maxchunks = max((len(items)-1)//max_threads + 1, 1)
 
         # pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)  # TODO: maxchunk
         with NoDaemonPool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:

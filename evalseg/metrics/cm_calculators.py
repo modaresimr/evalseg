@@ -5,7 +5,7 @@ epsilon = 0.00001
 
 def cm_calculate(dic, prefix):
     if type(dic) is dict:
-        out = {k: cm_calculate(dic) for k in dic}
+        out = {k: cm_calculate(dic[k], prefix) for k in dic}
 
         if 'tp' in out:
             assert 'fn' in out and 'fp' in out

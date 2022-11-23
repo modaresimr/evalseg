@@ -155,7 +155,7 @@ def _spider_chart(df, rng, title, ax, theta):
     # plt.show()
 
 
-def spider_chart_multi(dic, rng, title=None, col=5, dst=None, show=True, **kwargs):
+def spider_chart_multi(dic, rng, title=None, col=5, dst=None, show=True, titles={}, **kwargs):
 
     N = len(list(dic.values())[0].index)
     cols = min(col, len(dic))
@@ -173,7 +173,7 @@ def spider_chart_multi(dic, rng, title=None, col=5, dst=None, show=True, **kwarg
     axes = np.reshape(axes, -1)
     for i, k in enumerate(dic):
         # print(i, k)
-        _spider_chart(dic[k], rng, k, ax=axes[i], theta=theta)
+        _spider_chart(dic[k], rng, f'{titles.get(k+"-","")}{k}', ax=axes[i], theta=theta)
     for j in range(i + 1, len(axes)):
         axes[j].remove()
     plt.suptitle(title)

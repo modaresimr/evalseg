@@ -8,3 +8,6 @@ from .hd import HD
 from .voxel import Voxel
 from .cm_calculators import cm_calculate
 from .normalized_surface_dis import NSD
+
+# from . import aggregator
+from .average import Average, MultiSystemAverage
