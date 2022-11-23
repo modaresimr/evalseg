@@ -163,7 +163,7 @@ class MME(MetricABS):
         is2d = (len(test.shape) == 2 or test.shape[2] == 1)
         alpha1 = 0.001
         alpha2 = 1
-        m_def = {d: {TP: 0, FP: 0, FN: 0, TN: 0} for d in [D, B, U, R, T]}
+        m_def = {d: {TP: 0, FN: 0, FP: 0, TN: 0} for d in [D, B, U, R, T]}
 
         # dc = common.Object()
         info = {k: {} for k in m_def}
