@@ -152,6 +152,7 @@ class MME(MetricABS):
         helperc["components"] = {k['cid']: v for k, v in res}
         self.helper = helperc
 
+    # @auto_profiler.Profiler(filterExternalLibraries=False, depth=20)
     def evaluate(self, test: SegmentArray, return_debug: bool = False, debug_prefix='', normalize_total_duration=True, **kwargs):
         assert isinstance(test, SegmentArray)
         assert test.dtype == bool
@@ -582,7 +583,7 @@ def _get_merged_components(labels: SegmentArray, classes):
     component_merged = SegmentArray(np.zeros((0, 0, 0), bool), shape=labels.shape, spoint=[0, 0, 0], dtype=bool)
 
     for l in classes:
-        component_merged |= (labels == l)
+        component_merged = component_merged.__or__(labels.__eq__(l, calc_roi=False, multi_part=False), multi_part=False)
 
     return component_merged
 
