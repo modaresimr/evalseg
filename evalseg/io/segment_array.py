@@ -195,8 +195,8 @@ class SingleSegment:
         return res
 
     def __getitem__(self, index):
-        if index == self.roi:
-            return self
+        # if index == self.roi:
+        #     return self
         if type(index) == tuple and len(index) == len(self.shape):
             new_shape = ()
             new_shape_idx = ()
