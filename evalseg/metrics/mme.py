@@ -334,7 +334,7 @@ class MME(MetricABS):
                 if boundary_gtc_sum > 0:
                     boundary_fp = min(1, boundary_fpc.sum(dtype=np.float64)/boundary_gtc_sum)
                     boundary_fn = boundary_fnc_sum / boundary_gtc_sum
-                    boundary_tp = boundary_fnc_sum / boundary_gtc_sum
+                    boundary_tp = boundary_tpc_sum / boundary_gtc_sum
 
                     m[B][TP] += boundary_tp
                     m[B][FN] += boundary_fn
