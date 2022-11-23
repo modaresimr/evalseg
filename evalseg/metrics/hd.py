@@ -29,4 +29,6 @@ class HD(MetricABS):
                   '95th': lambda x: np.quantile(x, .95)
                   }
 
+        dst_gt2pred = dst_gt2pred if len(dst_gt2pred) else [np.inf]
+        dst_pred2gt = dst_pred2gt if len(dst_pred2gt) else [np.inf]
         return {t: np.mean([m_func[t](dst_pred2gt), m_func[t](dst_gt2pred)]) for t in m_func}
