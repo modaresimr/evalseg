@@ -146,7 +146,7 @@ class MME(MetricABS):
         # items = [{'cid': i, 'component': None} for i in range(1, gN + 1)]
 
         maxcpu = psutil.virtual_memory().available//(30 * 1024 * 1024 * 1024)+1
-        res = common.parallel_runner(self._calc_component_info, items, parallel=1, max_cpu=maxcpu, maxtasksperchild=1)
+        res = common.parallel_runner(self._calc_component_info, items, parallel=0, max_cpu=maxcpu, maxtasksperchild=1)
         # res = common.parallel_runner(self.__calc_component_info, items, parallel=0, max_cpu=1, maxtasksperchild=1)
 
         helperc["components"] = {k['cid']: v for k, v in res}
@@ -184,12 +184,11 @@ class MME(MetricABS):
 
         # extend gt_regions for not included components in prediction {
 
-        gt_regions = helperc["gt_regions"]
-        gt_regions_idx = _get_component_idx(gt_regions[test])
-        gt_region_mask = _get_merged_components(gt_regions, gt_regions_idx).todense()
-        rel_gt_regions = np.zeros(gt_regions.shape, gt_regions.dtype)
-        rel_gt_regions[gt_region_mask] = gt_regions[gt_region_mask]
-        gt_regions = geometry.expand_labels(rel_gt_regions, spacing=reference.voxelsize).astype(np.uint8)
+        gt_regions = get_gt_regions_for_pred(helperc["gt_regions"], test)
+
+        # rel_gt_regions = np.zeros(gt_regions.shape, gt_regions.dtype)
+        # rel_gt_regions[gt_region_mask] = gt_regions[gt_region_mask]
+        # gt_regions = geometry.expand_labels(rel_gt_regions, spacing=reference.voxelsize).astype(np.uint8)
 
         # }
         rel = _get_rel_gt_pred(gt_labels, gN, pred_labels, pN, gt_regions)
@@ -212,7 +211,7 @@ class MME(MetricABS):
             pred_in_region = rel["r+"][ri]["p+in_region"]["merged_comp"]
 
             if debug[UI] and is2d:
-                ui_regions = gt_regions.copy()
+                ui_regions = gt_regions.todense()
                 ndst_in = hci["skgt_normalized_dst_in"]
                 ndst_out = hci["skgt_normalized_dst_out"]
                 ndst = (ndst_in+ndst_out).todense()
@@ -598,11 +597,13 @@ def _get_rel_gt_pred(gt_labels: SegmentArray, gN, pred_labels: SegmentArray, pN,
         gt_comp = gt_labels == ri
         pidx = _get_component_idx(pred_labels[gt_comp])
 
-        preds_in_region = np.zeros(pred_labels.shape, pred_labels.dtype)
         region = gt_regions == ri
-        preds_in_region[region] = pred_labels[region]
+        preds_in_region = np.zeros(pred_labels.shape, pred_labels.dtype)
+        # preds_in_region[region] = region&pred_labels[region]
+        # preds_in_region = SegmentArray(preds_in_region, multi_part=False)
+        x = region[region.roi]
+        preds_in_region[region.roi][x] = pred_labels[region.roi][x]
         preds_in_region = SegmentArray(preds_in_region, multi_part=False)
-
         rel["r+"][ri] = {
             "comp": gt_comp,
             "p+": {
@@ -654,3 +655,56 @@ def get_components_from_segment(segment: SegmentArray):
     res = SegmentArray(rescc, segment.voxelsize, dtype=np.uint8, shape=segment.shape, spoint=spoint)
 
     return res, n
+
+
+def get_gt_regions_for_pred(orig_gt_regions: SegmentArray, test: SegmentArray):
+    intestgt = orig_gt_regions[test.roi]
+    # intestgt[test.todense()] = orig_gt_regions[test]
+
+    gt_regions_idx = _get_component_idx(intestgt[test[test.roi]])
+    # gt_region_mask_old = _get_merged_components(orig_gt_regions, gt_regions_idx).todense()
+
+    # rel_gt_regions = np.zeros(orig_gt_regions.shape, orig_gt_regions.dtype)
+    # rel_gt_regions[gt_region_mask_old] = orig_gt_regions[gt_region_mask_old]
+    # gt_regions_old = geometry.expand_labels(rel_gt_regions, spacing=test.voxelsize).astype(np.uint8)
+
+    intestgt[~np.isin(intestgt, gt_regions_idx)] = 0
+
+    # if not np.all(rel_gt_regions == gt_regions_2):
+    #     print('error')
+    intestgt = geometry.expand_labels(intestgt, spacing=test.voxelsize).astype(np.uint8)
+    gt_regions = SegmentArray(intestgt, shape=test.shape, spoint=[r.start for r in test.roi],
+                              calc_roi=False, multi_part=False, fill_value=gt_regions_idx[0])
+
+    # ui.multi_plot_img({'orig': orig_gt_regions.todense(), 'regions': gt_regions.todense(), 'test': test.todense()}, interactive=True)
+
+    return gt_regions
+
+
+def get_gt_regions_for_pred2(orig_gt_regions: SegmentArray, test: SegmentArray):
+    intestgt = np.zeros([r.stop-r.start for r in test.roi], orig_gt_regions.dtype)
+    rel_gt = orig_gt_regions[test]
+
+    gt_regions_idx = _get_component_idx(rel_gt)
+    # gt_region_mask_old = _get_merged_components(orig_gt_regions, gt_regions_idx).todense()
+
+    # rel_gt_regions = np.zeros(orig_gt_regions.shape, orig_gt_regions.dtype)
+    # rel_gt_regions[gt_region_mask_old] = orig_gt_regions[gt_region_mask_old]
+    # gt_regions_old = geometry.expand_labels(rel_gt_regions, spacing=test.voxelsize).astype(np.uint8)
+
+    gt_region_mask = np.isin(orig_gt_regions.todense(), gt_regions_idx)
+    gt_region_mask = SegmentArray(gt_region_mask)
+
+    rroi = gt_region_mask.roi
+    mask_in_roi = gt_region_mask[gt_region_mask.roi]
+    gt_regions_2 = np.zeros(mask_in_roi.shape, orig_gt_regions.dtype)
+    gt_regions_2[mask_in_roi] = orig_gt_regions[gt_region_mask]
+    # if not np.all(rel_gt_regions == gt_regions_2):
+    #     print('error')
+    gt_regions_2 = geometry.expand_labels(gt_regions_2, spacing=test.voxelsize).astype(np.uint8)
+    gt_regions = SegmentArray(gt_regions_2, shape=test.shape, spoint=[r.start for r in rroi],
+                              calc_roi=False, multi_part=False, fill_value=gt_regions_idx[0])
+
+    # ui.multi_plot_img({'orig': orig_gt_regions.todense(), 'regions': gt_regions.todense(), 'test': test.todense()}, interactive=True)
+
+    return gt_regions
