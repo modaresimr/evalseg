@@ -65,12 +65,13 @@ def mutli_run_dataset(root_data, dataset_name, out_root):  # pragma: no cover
     dataset = Dataset(f'{root_data}/{dataset_name}')
 
     for case in sorted(dataset.get_available_ids()):
-        out_path = f'{out_root}/{dataset_name}-{case}'
-        if not os.path.isfile(f'{out_path}.json'):
+        out_path = f'{out_root}/{dataset_name}-{case}.json'
+        print(out_path)
+        if not os.path.isfile(f'{out_path}'):
             continue
         maxcpu = psutil.virtual_memory().available//(50 * 1024 * 1024 * 1024)+1
 
         res = measure_all_metrics_for_all_pred(dataset, case, max_cpu=maxcpu)
 
-        with open(f'{out_path}.json', 'w') as f:
+        with open(f'{out_path}', 'w') as f:
             json.dump(res, f, indent=4, cls=NumpyEncoder)
