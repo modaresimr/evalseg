@@ -66,7 +66,6 @@ def common_keys(dic1, dic2):
         if not all(k in dic2 for k in dic1):
             x = [k for k in dic1 if k not in dic2]
             print('warning! {x} is in dic1 but not in dic2')
-            assert False, f' {x} is in dic1={dic1.keys()}  but not in dic2 {dic2.keys()}'
         if not all(k in dic1 for k in dic2):
             x = [k for k in dic2 if k not in dic1]
             print('warning! {x} is in dic2 but not in dic1')
