@@ -65,10 +65,10 @@ def common_keys(dic1, dic2):
 
         if not all(k in dic2 for k in dic1):
             x = [k for k in dic1 if k not in dic2]
-            print('warning! {x} is in dic1 but not in dic2')
+            print(f'warning! {x} is in dic1 but not in dic2')
         if not all(k in dic1 for k in dic2):
             x = [k for k in dic2 if k not in dic1]
-            print('warning! {x} is in dic2 but not in dic1')
+            print(f'warning! {x} is in dic2 but not in dic1')
 
         com_keys = [k for k in dic1 if k in dic2]
         ret = {k: common_keys(dic1[k], dic2[k]) for k in com_keys}
