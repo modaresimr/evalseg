@@ -15,7 +15,7 @@ def cm_calculate(dic, prefix):
             out[prefix][f'tpr'] = tpr = tp/(tp + fn + epsilon)
             out[prefix][f"f1"] = 2 * tpr * prc / (tpr + prc + epsilon)
             out[prefix][f'iou'] = tp/(tp + fn+fp + epsilon)
-            out[prefix][f'vs'] = 1 - (np.abs(fn-fp) / ((2*tp + fp + fn) if (2*tp + fp + fn) > 0 else 0))
+            out[prefix][f'vs'] = 1 - ((np.abs(fn-fp) / (2*tp + fp + fn)) if (2*tp + fp + fn) > 0 else 0)
 
         return out
 
