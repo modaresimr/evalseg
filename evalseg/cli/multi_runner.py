@@ -67,7 +67,7 @@ def mutli_run_dataset(root_data, dataset_name, out_root):  # pragma: no cover
     for case in sorted(dataset.get_available_ids()):
         out_path = f'{out_root}/{dataset_name}-{case}.json'
         print(out_path)
-        if not os.path.isfile(f'{out_path}'):
+        if os.path.isfile(f'{out_path}'):
             continue
         maxcpu = psutil.virtual_memory().available//(50 * 1024 * 1024 * 1024)+1
 
