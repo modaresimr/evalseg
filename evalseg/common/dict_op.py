@@ -51,3 +51,28 @@ def assert_same_keys(dic1, dic2):
             assert_same_keys(dic1[k], dic2[k])
 
     return True
+
+
+def common_keys(dic1, dic2):
+    if type(dic1) != dict and type(dic2) == dict:
+        print(f'Warning! type {dic1} is different from type {dic2}')
+        return None
+    if type(dic1) == dict and type(dic2) != dict:
+        print(f'Warning! type {dic1} is different from type {dic2}')
+        return None
+
+    if type(dic1) == dict and type(dic2) == dict:
+
+        if not all(k in dic2 for k in dic1):
+            x = [k for k in dic1 if k not in dic2]
+            print('warning! {x} is in dic1 but not in dic2')
+            assert False, f' {x} is in dic1={dic1.keys()}  but not in dic2 {dic2.keys()}'
+        if not all(k in dic1 for k in dic2):
+            x = [k for k in dic2 if k not in dic1]
+            print('warning! {x} is in dic2 but not in dic1')
+
+        common_keys = [k for k in dic1 if k in dic2]
+        ret = {k: common_keys(dic1[k], dic2[k]) for k in common_keys}
+        return {k: ret[k][0] for k in common_keys if ret[k] is not None}, {k: ret[k][1] for k in common_keys if ret[k] is not None}
+
+    return dic1, dic2
