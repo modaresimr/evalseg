@@ -64,20 +64,24 @@ def plot_full_metric_multi(ev_dic, name=None, dst=None, show=True, col=5, show_t
         ev = ev_dic[pred]
 
         for c in ev['mme']:
-            df = metrics.traditional.calculate_prc_tpr_f1_multi(ev['mme'][c])
-            print(df)
             descr[c][pred] = {m: v[c] for m, v in ev.items() if m != 'mme'}
-            dic_of_cls[c][pred] = df[["tpr", "prc"]]
+            # df = metrics.traditional.calculate_prc_tpr_f1_multi(ev['mme'][c])
+            res = pd.DataFrame({prop: pval['macro'] for prop, pval in ev['mme'][c].items()})
+            # print(df)
+
+            dic_of_cls[c][pred] = res.T[["tpr", "prc"]]  # {k: res[k] for k in ["tpr", "prc"]}
             dic_of_cls[c][pred].columns = ['TPR', 'PRC']
             # ui.spider_chart(df[['prc', 'tpr']], np.arange(0, 1, .2), title=name, ax=axes[c])
             # display(
             if 'ignore it' in pred:
-                dic_of_cls[c][pred] *= 0
+                # dic_of_cls[c][pred] *= 0
+                pass
             else:
-                df2 = pd.concat([df], keys=[name], names=[f"Class {c}-{pred}"]).round(2).drop("tn", axis=1)
-                if show_table:
-                    display(df2)
-                outhtml[c] += df2.to_html()
+                # df2 = pd.concat(pd.res, keys=[name], names=[f"Class {c}-{pred}"]).round(2).drop("tn", axis=1)
+                # if show_table:
+                # display(df2)
+                # outhtml[c] += df2.to_html()
+                pass
             # )
     dstpng = dsthtml = None
     for c in dic_of_cls:
