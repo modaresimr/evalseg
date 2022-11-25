@@ -11,3 +11,4 @@ from .normalized_surface_dis import NSD
 
 # from . import aggregator
 from .average import Average, MultiSystemAverage
+from .rank_aggregator import rank
