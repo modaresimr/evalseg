@@ -1,50 +1,53 @@
-from . import MultiSystemAggregatorABS
 from ...common import dict_op
 from scipy.stats import rankdata
+from collections import defaultdict
+import numpy as np
 
 
-class RankAgg:
+def rank(items, metric_info={}, desc=0):
 
-    def __init__(self, metric_info={}):
-        self.__items = {}
-        self.__count = 0
-        self.metric_info = metric_info
-        pass
+    preds = list(items.keys())
+    ranked_items = dict_op.multiply(items, 0)
+    for m, mv in items[preds[0]].items():  # self.metrics
+        for c in mv:  # self.classes
+            key = (m, c)
+            coef = 1 if metric_info.get(m, {}).get('higher_better', True) else -1
+            coef *= 1 if desc else -1
 
-    def multi_add(self, pred_aggr):
-        if len(self.__items) == 0:
-            # self.preds = list(pred_aggr.keys())
-            # self.classes = list(pred_aggr[self.preds[0]].keys())
-            # self.metrics = list(pred_aggr[self.preds[0]][self.classes[0]].keys())
-            # self.items = list(pred_aggr[self.preds[0]][self.classes[0]][self.metrics[0]].keys())
-            # {p: {c: {m: {item: 0 for item in self.items} for m in self.metrics} for c in self.classes} for p in self.preds}
-            self.__items = dict_op.multiply(pred_aggr, 0)
+            __rank_subdict(items, preds, key, coef, ranked_items)
 
-        assert dict_op.have_same_keys(self.__items, pred_aggr)
+    return ranked_items
 
-        ranked_preds = self.__get_rank(pred_aggr)
-        self.__items = dict_op.sum(self.__items, ranked_preds)
-        self.__count += 1
 
-    def __get_rank(self, items):
-        ranked_items = {}
-        preds = list(items.keys())
+def __get_item_dict(dict, key):
+    ret = dict
+    for k in key:
+        ret = ret[k]
+    return ret
 
-        for c in items[preds[0]]:  # self.classes
-            for m in items[preds[0]][c]:  # self.metrics
-                coef = -1 if self.metric_info.get(m, {}).get('higher_is_better', True) else 1
-                for item in items[preds[0]][c][m]:  # self.items:
-                    to_rank = [items[p][c][m][item]*coef for p in preds]
-                    rank = rankdata(to_rank, method='min')
-                    for i, p in enumerate(preds):
-                        ranked_items = rank[i]
-        return ranked_items
 
-    def get(self, mode='rank'):
-        if mode == 'rank':
-            return self.__get_rank(self.__items)
-        if mode == 'avg':
-            return dict_op.multiply(self.__items, 1/self.__count)
-        raise Exception('invalid mode')
+def __set_item_dict(dict, key, val):
+    ret = dict
+    for i, k in enumerate(key):
+        if i == len(key)-1:
+            break
+        ret = ret[k]
+    ret[k] = val
 
-        # return {p: {c: {m: {item: self.__items[p][c][m][item]/self.__count for item in self.items} for m in self.metrics} for c in self.classes} for p in self.preds}
+
+def __rank_subdict(items, preds, key, coef, out):
+    p = preds[0]
+    val = __get_item_dict(items[p], key)
+    if type(val) == dict:
+        for k in val:
+            __rank_subdict(items, preds, key+(k,), coef, out)
+    else:
+        __rank_internal(items, preds, key, coef, out)
+
+
+def __rank_internal(items, preds, key, coef, out):
+    to_rank = [__get_item_dict(items[p], key)*coef for p in preds]
+    to_rank = [k if np.isfinite(k) else coef * -100000 for k in to_rank]
+    rank = rankdata(to_rank, method='min')
+    for i, p in enumerate(preds):
+        __set_item_dict(out[p], key, rank[i])

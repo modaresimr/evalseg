@@ -7,11 +7,29 @@ def sum(dic1, dic2):
     return dic1+dic2
 
 
+def concat(dic1, dic2):
+    if type(dic1) is dict:
+        return {k: concat(dic1[k], dic2[k]) for k in dic1}
+    if type(dic1) != tuple:
+        dic1 = (dic1,)
+    if type(dic2) != tuple:
+        dic2 = (dic2,)
+
+    return dic1+dic2
+
+
 def multiply(dic1, value):
     if type(dic1) is dict:
         return {k: multiply(dic1[k], value) for k in dic1}
 
     return dic1*value
+
+
+def apply_func(dic1, func):
+    if type(dic1) is dict:
+        return {k: apply_func(dic1[k], func) for k in dic1}
+
+    return func(dic1)
 
 
 def have_same_keys(dic1, dic2):
