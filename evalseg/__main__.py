@@ -1,6 +1,9 @@
 """Entry point for evalseg."""
 
-from .cli import main  # pragma: no cover
+from . import cli
+
 
 if __name__ == "__main__":  # pragma: no cover
-    main()
+    root_data = 'datasets'
+    out_root = 'out'
+    cli.mutli_run_all_datasets(root_data, out_root)

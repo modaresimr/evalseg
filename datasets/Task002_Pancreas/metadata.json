@@ -1,0 +1,15 @@
+{
+    "description": "Pancreas segmentation",
+    "labels": {
+        "0": "background",
+        "1": "pancreas"
+    },
+    "licence": "CC-BY",
+    "modality": {
+        "0": "CT"
+    },
+    "name": "Task002_Pancreas",
+    "reference": "TBA",
+    "release": "0.0",
+    "tensorImageSize": "4D"
+}

@@ -1,0 +1,15 @@
+{
+    "description": "Test dataset",
+    "labels": {
+        "0": "background",
+        "1": "foreground"
+    },
+    "licence": "CC-BY",
+    "modality": {
+        "0": "CT"
+    },
+    "name": "Test",
+    "reference": "TBA",
+    "release": "0.0",
+    "tensorImageSize": "4D"
+}

@@ -1,0 +1,22 @@
+{
+    "description": "Multiorgan segmentation",
+    "labels": {
+        "0": "background",
+        "1": "spleen",
+        "2": "pancreas",
+        "3": "left kidney",
+        "4": "gallbladder",
+        "5": "esophagus",
+        "6": "liver",
+        "7": "stomach",
+        "8": "duodenum"
+    },
+    "licence": "CC-BY",
+    "modality": {
+        "0": "CT"
+    },
+    "name": "Task04_Multiorgan",
+    "reference": "TBA",
+    "release": "0.0",
+    "tensorImageSize": "4D"
+}

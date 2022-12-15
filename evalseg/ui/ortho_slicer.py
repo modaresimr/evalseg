@@ -15,7 +15,7 @@ def ortho_slicer(img, pred, cut, spacing=None, args={}):
         axes = [axes]
 
     if len(pred) == 0:
-        pred["data"] = np.zeros(img.shape)
+        pred["data"] = np.zeros_like(img)
 
     for pi, p in enumerate(pred):
         for i in range(3):

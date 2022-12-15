@@ -4,8 +4,8 @@ from scipy.ndimage import distance_transform_edt
 from ..common import Cache
 
 
-@Cache.memoize()
-def expand_labels(label_image, spacing=None):
+# @Cache.memoize()
+def expand_labels(label_image, spacing=None, mask_roi=None):
     """Expand labels in label image by ``distance`` pixels without overlapping.
 
     Given a label image, ``expand_labels`` grows label regions (connected components)
@@ -80,7 +80,10 @@ def expand_labels(label_image, spacing=None):
            [2, 2, 0, 0],
            [2, 3, 3, 0]])
     """
+    res = np.zeros(label_image.shape, np.uint8)
+    mask_roi = np.s_[:] if mask_roi is None else mask_roi
 
+    label_image = label_image[mask_roi]
     nearest_label_coords = distance_transform_edt(
         label_image == 0,
         return_distances=False,
@@ -95,5 +98,7 @@ def expand_labels(label_image, spacing=None):
         dimension_indices for dimension_indices in nearest_label_coords
     ]
     nearest_labels = label_image[tuple(masked_nearest_label_coords)]
+    res[mask_roi] = nearest_labels
+    return res
 
-    return nearest_labels
+

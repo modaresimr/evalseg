@@ -1,7 +1,7 @@
 # Libraries
 
 from abc import abstractmethod
-
+from . import myplt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -134,9 +134,9 @@ def _spider_chart(df, rng, title, ax, theta):
     # fig.subplots_adjust(top=0.85, bottom=0.05)
     ax.set_title(
         title,
-        position=(0.5, 1.2),
-        horizontalalignment="center",
-        verticalalignment="center",
+        # position=(0.5, 1.2),
+        # horizontalalignment="center",
+        # verticalalignment="center",
     )
     ax.set_rgrids(rng, angle=0)
     ax.set_ylim(0, 1)
@@ -155,31 +155,32 @@ def _spider_chart(df, rng, title, ax, theta):
     # plt.show()
 
 
-def spider_chart_multi(dic, rng, title=None, cols=5, **kwargs):
+def spider_chart_multi(dic, rng, title=None, col=5, dst=None, show=True, titles={}, **kwargs):
 
-    N = len(next(iter(dic.values())).index)
-
+    N = len(list(dic.values())[0].index)
+    cols = min(col, len(dic))
     theta, axis_class = _radar_factory(N, frame="polygon")
     rows = (len(dic) - 1) // cols + 1
 
-    fig, axes = plt.subplots(
+    fig, axes = myplt.subplots(
         rows,
         cols,
-        figsize=(4 * cols, 4 * rows),
+        subplot_size=(3, 3),
+        dpi=100,
         subplot_kw=dict(projection=axis_class),
     )
 
     axes = np.reshape(axes, -1)
     for i, k in enumerate(dic):
-
-        _spider_chart(dic[k], rng, k, ax=axes[i], theta=theta)
+        # print(i, k)
+        _spider_chart(dic[k], rng, f'{titles.get(k+"-","")}{k}', ax=axes[i], theta=theta)
     for j in range(i + 1, len(axes)):
         axes[j].remove()
     plt.suptitle(title)
     # plt.tight_layout()
-    if kwargs.get("dst", ""):
-        plt.savefig(f"{kwargs['dst']}.png")
-    if kwargs.get("show", 1):
+    if dst:
+        plt.savefig(dst)
+    if show:
         plt.show()
     else:
         plt.close()

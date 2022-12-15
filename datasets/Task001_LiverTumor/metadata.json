@@ -1,0 +1,15 @@
+{
+    "description": "liver tumor CT dataset",
+    "labels": {
+        "0": "background",
+        "1": "tumor"
+    },
+    "licence": "CC-BY",
+    "modality": {
+        "0": "CT"
+    },
+    "name": "Task001_LiverTumor",
+    "reference": "TBA",
+    "release": "0.0",
+    "tensorImageSize": "4D"
+}
