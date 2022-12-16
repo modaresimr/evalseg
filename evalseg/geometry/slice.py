@@ -57,3 +57,12 @@ def slice(data, spacing, dim, cuts):
         data = data[:, :, cuts]
 
     return data, spacing
+
+
+def calc_max_slice_idx(seg):
+    if type(seg) is SegmentArray:
+        seg = seg.todense()
+
+    segmax = (seg.sum(axis=2).sum(axis=1).argmax(), seg.sum(axis=2).sum(axis=0).argmax(), seg.sum(axis=1).sum(axis=0).argmax())
+
+    return segmax
