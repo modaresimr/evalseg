@@ -65,18 +65,18 @@ def ortho_slicer_segment(img, preds, cut, show=True, dst=None):
 
     for pi, p in enumerate(preds):
         for i in range(3):
-            cut_img, cur_spa = geometry.slice_segment(img, i, cut[i])
+            cut_img = geometry.slice_segment(img, i, cut[i])
 
-            axes[pi][i].imshow(ct_helper.clahe(cut_img.todense()), cmap="bone", aspect=cur_spa[0] / cur_spa[1])
-            predcut, dim_new = geometry.slice_segment(preds[p], np.array([0, 1, 2]), i, cut[i])
+            axes[pi][i].imshow(ct_helper.clahe(cut_img.todense()), cmap="bone", aspect=cut_img.voxelsize[0] / cut_img.voxelsize[1])
+            predcut = geometry.slice_segment(preds[p], np.array([0, 1, 2]), i, cut[i])
 
             # axes[pi][i].imshow(predcut, cmap='bone')
 
             if predcut.sum() > 0:
-                axes[pi][i].contour(predcut)
+                axes[pi][i].contour(predcut.todense())
 
-            axes[pi][i].axhline(cut[dim_new[0]])
-            axes[pi][i].axvline(cut[dim_new[1]])
+            axes[pi][i].axhline(cut[predcut.voxelsize[0]])
+            axes[pi][i].axvline(cut[predcut.voxelsize[1]])
 
             axes[pi][i].set_ylim(0, predcut.shape[0])
             axes[pi][i].set_xlim(0, predcut.shape[1])
