@@ -6,7 +6,7 @@
 
 This project is intended to evaluate Medical Segmentation approaches from multiple prespective.
 
-Please cite us if you use our codes ;)
+Please cite us if you use our codes or ideas ;)
 
 ```
 @misc{modaresi2022mis,
