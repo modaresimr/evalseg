@@ -5,6 +5,19 @@
 # Medical Image Segmentation Evaluation
 
 This project is intended to evaluate Medical Segmentation approaches from multiple prespective.
+
+Please cite us if you use our codes ;)
+
+```
+@misc{modaresi2022mis,
+  doi = {10.34740/KAGGLE/DSV/4728423},
+  url = {https://www.kaggle.com/dsv/4728423},
+  author = {{Seyed Modaresi} and {Aomar Osmani} and {Mohammadreza Razzazi} and {Abdelghani Chibani}},
+  title = {Medical Image Segmentation: Evaluation},
+  publisher = {Kaggle},
+  year = {2022}
+}
+```
 ![graphic_abstract](https://user-images.githubusercontent.com/9498182/200766838-d133d84f-2805-4818-b98c-a470debdb6ee.png)
 
 ![graphic-abstract](https://user-images.githubusercontent.com/9498182/197723220-760ad148-e7a7-4bd6-bacb-805111141dcc.png)
