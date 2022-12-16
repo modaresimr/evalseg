@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm.auto import tqdm
 
-from .. import ct_helper, geometry
+from .. import ct_helper, geometry, io
 
 
-def ortho_slicer(img, pred, cut, spacing=None, args={}):
+def ortho_slicer(img, pred, cut, spacing=None, show=True, dst=None):
     spacing = np.array([1, 1, 1] if spacing is None else spacing)
     row = len(pred)
     col = 3
@@ -45,9 +45,46 @@ def ortho_slicer(img, pred, cut, spacing=None, args={}):
             axes[pi][i].set_xlim(0, predcut.shape[1])
             # axes[i].invert_yaxis()
         axes[pi][1].set_title(f"{p} {cut}")
-    if args.get("dst", ""):
-        fig.savefig(args["dst"] + ".png")
-    if args.get("show", 1):
+    if dst:
+        fig.savefig(dst + ".png")
+    if show:
+        fig.show()
+    else:
+        plt.close()
+
+
+def ortho_slicer_segment(img, preds, cut, show=True, dst=None):
+    row = len(preds)
+    col = 3
+    fig, axes = plt.subplots(row, col, figsize=(col * 2, row * 2), dpi=100)
+    if row == 1:
+        axes = [axes]
+
+    if len(preds) == 0:
+        preds["data"] = io.SegmentArray(np.zeros_like(img))
+
+    for pi, p in enumerate(preds):
+        for i in range(3):
+            cut_img, cur_spa = geometry.slice_segment(img, i, cut[i])
+
+            axes[pi][i].imshow(ct_helper.clahe(cut_img.todense()), cmap="bone", aspect=cur_spa[0] / cur_spa[1])
+            predcut, dim_new = geometry.slice_segment(preds[p], np.array([0, 1, 2]), i, cut[i])
+
+            # axes[pi][i].imshow(predcut, cmap='bone')
+
+            if predcut.sum() > 0:
+                axes[pi][i].contour(predcut)
+
+            axes[pi][i].axhline(cut[dim_new[0]])
+            axes[pi][i].axvline(cut[dim_new[1]])
+
+            axes[pi][i].set_ylim(0, predcut.shape[0])
+            axes[pi][i].set_xlim(0, predcut.shape[1])
+
+        axes[pi][1].set_title(f"{p} {cut}")
+    if dst:
+        fig.savefig(dst + ".png")
+    if show:
         fig.show()
     else:
         plt.close()
