@@ -16,3 +16,4 @@ k3d
 ipython
 typing-extensions
 psutil
+auto-profiler
