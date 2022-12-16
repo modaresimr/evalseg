@@ -3,10 +3,10 @@ import numpy as np
 from ..io import SegmentArray
 
 
-def slice_segment(data: SegmentArray, dim, cuts) -> SegmentArray:
+def slice_segment(data: SegmentArray, dim, cuts, spacing=None) -> SegmentArray:
     if dim == -1 or dim == 'all' or dim == None:
         return data
-    spacing = data.voxelsize
+    spacing = data.voxelsize if spacing is None else spacing
     if dim == 1 or dim == 'y':
         code = [2, 0, 1]
         # data = np.transpose(data, (2, 0, 1))
@@ -57,3 +57,12 @@ def slice(data, spacing, dim, cuts):
         data = data[:, :, cuts]
 
     return data, spacing
+
+
+def calc_max_slice_idx(seg):
+    if type(seg) is SegmentArray:
+        seg = seg.todense()
+
+    segmax = (seg.sum(axis=2).sum(axis=1).argmax(), seg.sum(axis=2).sum(axis=0).argmax(), seg.sum(axis=1).sum(axis=0).argmax())
+
+    return segmax
