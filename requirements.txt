@@ -17,3 +17,4 @@ ipython
 typing-extensions
 psutil
 auto-profiler
+memory_profiler
