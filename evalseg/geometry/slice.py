@@ -3,7 +3,7 @@ import numpy as np
 from ..io import SegmentArray
 
 
-def slice_segment(data: SegmentArray, dim, cuts):
+def slice_segment(data: SegmentArray, dim, cuts) -> SegmentArray:
     if dim == -1 or dim == 'all' or dim == None:
         return data
     spacing = data.voxelsize

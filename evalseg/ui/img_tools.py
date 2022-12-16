@@ -9,8 +9,16 @@ def concat(list_im, out=None, dir='h'):
     """
     concat multiple images 
     """
+    def get_pil(img):
+        if type(img) == str:
+            return Image.open(img)
+        if type(img) == Image.Image:
+            return img
+        if type(img) == np.ndarray:
+            return Image.fromarray(img)
+        raise Exception(f'not supported type={type(img)}')
+    imgs = [get_pil(i) for i in list_im]
 
-    imgs = [Image.open(i) for i in list_im]
     # pick the image which is the smallest, and resize the others to match it (can be arbitrary image shape here)
     shape = sorted([(np.sum(i.size), i.size) for i in imgs])[-1][1]
     if dir == 'h':

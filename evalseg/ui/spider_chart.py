@@ -150,7 +150,9 @@ def _spider_chart(df, rng, title, ax, theta):
     ax.tick_params(pad=0)
     # ax.set_thetagrids(np.degrees(theta), spoke_labels, )
     ax.margins(x=0, y=0)
-    legend = ax.legend(loc=(0.8, 0.9), labelspacing=0.1, fontsize="small")
+    legend = ax.legend(loc=(0.7, 0.9), labelspacing=0.1, fontsize="small")
+    # legend = ax.legend(loc='upper right', labelspacing=0.1, fontsize="small")
+
     # ax.set_thetagrids([0, 10])
     # plt.show()
 
