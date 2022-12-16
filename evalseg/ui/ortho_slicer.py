@@ -21,12 +21,8 @@ def ortho_slicer(img, pred, cut, spacing=None, args={}):
         for i in range(3):
             cut_img, cur_spa = geometry.slice(img, spacing, i, cut[i])
 
-            axes[pi][i].imshow(
-                ct.clahe(cut_img), cmap="bone", aspect=cur_spa[0] / cur_spa[1]
-            )
-            predcut, dim_new = geometry.slice(
-                pred[p], np.array([0, 1, 2]), i, cut[i]
-            )
+            axes[pi][i].imshow(cut_img.clahe(cut_img), cmap="bone", aspect=cur_spa[0] / cur_spa[1])
+            predcut, dim_new = geometry.slice(pred[p], np.array([0, 1, 2]), i, cut[i])
 
             # axes[pi][i].imshow(predcut, cmap='bone')
 
