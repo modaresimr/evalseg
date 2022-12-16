@@ -68,7 +68,8 @@ def ortho_slicer_segment(img, preds, cut, show=True, dst=None):
             cut_img = geometry.slice_segment(img, i, cut[i])
 
             axes[pi][i].imshow(ct_helper.clahe(cut_img.todense()), cmap="bone", aspect=cut_img.voxelsize[0] / cut_img.voxelsize[1])
-            predcut = geometry.slice_segment(preds[p], np.array([0, 1, 2]), i, cut[i])
+            predcut = geometry.slice_segment(preds[p], i, cut[i],spacing=np.array([0, 1, 2]))
+
 
             # axes[pi][i].imshow(predcut, cmap='bone')
 

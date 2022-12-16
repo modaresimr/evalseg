@@ -3,10 +3,10 @@ import numpy as np
 from ..io import SegmentArray
 
 
-def slice_segment(data: SegmentArray, dim, cuts) -> SegmentArray:
+def slice_segment(data: SegmentArray, dim, cuts, spacing=None) -> SegmentArray:
     if dim == -1 or dim == 'all' or dim == None:
         return data
-    spacing = data.voxelsize
+    spacing = data.voxelsize if spacing is None else spacing
     if dim == 1 or dim == 'y':
         code = [2, 0, 1]
         # data = np.transpose(data, (2, 0, 1))
