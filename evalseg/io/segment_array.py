@@ -115,6 +115,9 @@ def get_default_array_from_roi(index, orig_shape, dtype, fill_value=0):
         return 0
     new_shape = ()
     ret = ()
+    for _ in range(len(index), len(orig_shape)):
+        index = [*index, np.s_[:]]
+
     for i in range(len(index)):
         if type(index[i]) == int:
             pass
@@ -197,7 +200,11 @@ class SingleSegment:
     def __getitem__(self, index):
         # if index == self.roi:
         #     return self
-        if type(index) == tuple and len(index) == len(self.shape):
+
+        if type(index) == tuple:
+            for _ in range(len(index), len(self.shape)):
+                index = [*index, np.s_[:]]
+
             new_shape = ()
             new_shape_idx = ()
             data_idx = ()

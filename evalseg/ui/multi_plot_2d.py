@@ -27,13 +27,14 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, ctlbl='CT', show_ori
         crop2roi = 0
         ct = gt.copy()
 
-    items = {ctlbl: ct*1, gtlbl: gt*1, **preds}
+    items = {ctlbl: ct[:, :, :]*1, gtlbl: gt[:, :, :]*1, **preds}
 
     if clahe:
         items[ctlbl] = ct_helper.clahe(items[ctlbl])
 
     if crop2roi:
         roi = ct_helper.ct_roi(items[ctlbl], True)
+        roi += (np.s_[:],)
         items = {p: items[p][roi] for p in items}
 
     if zoom2segments:
@@ -142,7 +143,7 @@ def multi_plot_2d(ct, gt, preds, *, dst=None, spacing=None, ctlbl='CT', show_ori
                                        alpha=0.5, aspect=aspect)
 
                 if current["pred"].sum() > 0:
-                    color = "lime" if p == gtlbl else "yellow"
+                    color = "lime" if p == gtlbl else "blue"
                     axes[i].contour(current["pred"], colors=color, alpha=1)
 
             axes[i].set_axis_off()

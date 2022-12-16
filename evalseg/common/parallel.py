@@ -50,8 +50,9 @@ def _parallel_runner(runner, items, *, max_cpu=0, parallel=True, maxtasksperchil
         maxchunks = max((len(items)-1)//max_threads + 1, 1)
 
         # pool = multiprocessing.Pool(max_cpu, maxtasksperchild=20)  # TODO: maxchunk
-        with NoDaemonPool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:
-            # with multiprocessing.Pool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:
+        
+        # with NoDaemonPool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:#remove inner level parallel (error in kaggle)
+        with multiprocessing.Pool(max_cpu, maxtasksperchild=maxtasksperchild) as pool:
             # result = pool.imap(partial(_chunk_run, runner=runner), chunks)
             result = pool.imap(partial(__run, runner=runner), items, chunksize=maxchunks)
             try:
